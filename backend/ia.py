@@ -23,6 +23,10 @@ import logica
 load_dotenv()
 
 MODELO = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+# Si el modelo principal está saturado (error 503) se intenta con este
+MODELO_RESPALDO = os.getenv("GEMINI_MODEL_RESPALDO", "gemini-flash-lite-latest")
+# Errores temporales de Google: se reintenta automáticamente
+CODIGOS_TEMPORALES = (429, 500, 502, 503, 504)
 _client: genai.Client | None = None
 
 
@@ -33,8 +37,26 @@ def cliente() -> genai.Client:
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise RuntimeError("Falta GEMINI_API_KEY en el archivo .env")
-        _client = genai.Client(api_key=api_key)
+        _client = genai.Client(
+            api_key=api_key,
+            http_options=types.HttpOptions(
+                retry_options=types.HttpRetryOptions(
+                    attempts=3,            # 1 intento + 2 reintentos
+                    initial_delay=1.0,     # espera 1 s, luego 2 s...
+                    max_delay=8.0,
+                    http_status_codes=list(CODIGOS_TEMPORALES),
+                )
+            ),
+        )
     return _client
+
+
+def _es_temporal(e: Exception) -> bool:
+    return isinstance(e, errors.APIError) and e.code in CODIGOS_TEMPORALES
+
+
+def _modelos() -> list[str]:
+    return [MODELO] + ([MODELO_RESPALDO] if MODELO_RESPALDO and MODELO_RESPALDO != MODELO else [])
 
 
 class ErrorIA(Exception):
@@ -45,6 +67,8 @@ def _manejar_error(e: Exception) -> ErrorIA:
     if isinstance(e, errors.APIError):
         if e.code == 429:
             return ErrorIA("La IA recibió demasiadas peticiones. Intenta de nuevo en unos segundos.")
+        if e.code in (500, 502, 503, 504):
+            return ErrorIA("Los servidores de Gemini están saturados en este momento. Intenta de nuevo en un minuto.")
         if e.code in (401, 403):
             return ErrorIA("La API key de Gemini no es válida o no tiene permisos.")
         return ErrorIA(f"Error de Gemini ({e.code}). Intenta de nuevo.")
@@ -167,9 +191,10 @@ def _limpiar_sesiones() -> None:
         del _SESIONES[mas_viejo]
 
 
-def _nuevo_chat(idsucursal: int | None, nombre_usuario: str | None):
+def _nuevo_chat(idsucursal: int | None, nombre_usuario: str | None, modelo: str = MODELO, historial=None):
     return cliente().chats.create(
-        model=MODELO,
+        model=modelo,
+        history=historial,
         config=types.GenerateContentConfig(
             system_instruction=_instrucciones_chat(idsucursal, nombre_usuario),
             tools=HERRAMIENTAS,
@@ -189,7 +214,9 @@ def chatear(mensaje: str, id_sesion: str | None = None, idsucursal: int | None =
     if not id_sesion or id_sesion not in _SESIONES:
         id_sesion = id_sesion or uuid.uuid4().hex
         try:
-            _SESIONES[id_sesion] = {"chat": _nuevo_chat(idsucursal, nombre_usuario), "ultimo_uso": time.time()}
+            _SESIONES[id_sesion] = {"chat": _nuevo_chat(idsucursal, nombre_usuario), "modelo": MODELO,
+                                    "idsucursal": idsucursal, "nombre_usuario": nombre_usuario,
+                                    "ultimo_uso": time.time()}
         except Exception as e:
             raise _manejar_error(e)
 
@@ -198,7 +225,16 @@ def chatear(mensaje: str, id_sesion: str | None = None, idsucursal: int | None =
     try:
         respuesta = sesion["chat"].send_message(mensaje)
     except Exception as e:
-        raise _manejar_error(e)
+        if not (_es_temporal(e) and sesion["modelo"] != MODELO_RESPALDO and MODELO_RESPALDO):
+            raise _manejar_error(e)
+        # El modelo principal sigue saturado: se cambia al de respaldo conservando la conversación
+        try:
+            historial = sesion["chat"].get_history()
+            sesion["chat"] = _nuevo_chat(sesion["idsucursal"], sesion["nombre_usuario"], MODELO_RESPALDO, historial)
+            sesion["modelo"] = MODELO_RESPALDO
+            respuesta = sesion["chat"].send_message(mensaje)
+        except Exception as e2:
+            raise _manejar_error(e2)
 
     herramientas_usadas = []
     for contenido in respuesta.automatic_function_calling_history or []:
@@ -210,6 +246,7 @@ def chatear(mensaje: str, id_sesion: str | None = None, idsucursal: int | None =
         "respuesta": respuesta.text or "No pude generar una respuesta, intenta reformular la pregunta.",
         "id_sesion": id_sesion,
         "herramientas_usadas": herramientas_usadas,
+        "modelo": sesion["modelo"],
     }
 
 
@@ -262,14 +299,23 @@ def _datos_para_reporte(idsucursal: int) -> dict:
 def generar_reporte(idsucursal: int, idtrabajador: int, guardar: bool = True) -> dict:
     """Junta los datos de la sucursal, le pide a Gemini el reporte y lo guarda como borrador."""
     datos = _datos_para_reporte(idsucursal)
-    try:
-        r = cliente().models.generate_content(
-            model=MODELO,
-            contents=f"Datos de la sucursal (JSON):\n{json.dumps(datos, ensure_ascii=False, default=str)}",
-            config=types.GenerateContentConfig(system_instruction=INSTRUCCIONES_REPORTE, temperature=0.3),
-        )
-    except Exception as e:
-        raise _manejar_error(e)
+    contenido_prompt = f"Datos de la sucursal (JSON):\n{json.dumps(datos, ensure_ascii=False, default=str)}"
+    r = None
+    ultimo_error: Exception | None = None
+    for modelo in _modelos():
+        try:
+            r = cliente().models.generate_content(
+                model=modelo,
+                contents=contenido_prompt,
+                config=types.GenerateContentConfig(system_instruction=INSTRUCCIONES_REPORTE, temperature=0.3),
+            )
+            break
+        except Exception as e:
+            ultimo_error = e
+            if not _es_temporal(e):
+                break
+    if r is None:
+        raise _manejar_error(ultimo_error)
 
     contenido = r.text or "No se pudo generar el reporte."
     titulo = f"Reporte diario - {datos['sucursal']} - {datos['fecha']}"

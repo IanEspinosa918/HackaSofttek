@@ -32,6 +32,8 @@ def modo_chat(idsucursal: int):
         id_sesion = r["id_sesion"]
         if r["herramientas_usadas"]:
             print(f"  (consultó: {', '.join(r['herramientas_usadas'])})")
+        if r.get("modelo") and r["modelo"] != ia.MODELO:
+            print(f"  (usando modelo de respaldo: {r['modelo']})")
         print(f"IA: {r['respuesta']}\n")
 
 
