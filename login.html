@@ -317,7 +317,9 @@
      * Usuarios de prueba: corre "python asignar_contrasenas.py" en la carpeta backend.
      */
     // Si la página la sirve el backend (puerto 8000) se usa la misma dirección; si se abre con doble clic, el backend local.
-    const API = (location.protocol.startsWith('http') && location.port === '8000') ? '' : 'http://localhost:8000';
+    const API = (location.protocol.startsWith('http') &&
+               (location.port === '8000' || !['localhost', '127.0.0.1'].includes(location.hostname)))
+      ? '' : 'http://localhost:8000';
 
     // Valida contra la base de datos (POST /api/login). Regresa { ok, usuario } o { ok: false, codigo }.
     async function validarCredenciales(usuario, contrasena) {
@@ -377,7 +379,7 @@
         if (res.ok) {
           // Login correcto: redirige a la página principal
           // Guarda quién entró (nombre, rol y sucursal) para el dashboard y el asistente
-          try { localStorage.setItem('ti_usuario', JSON.stringify(res.usuario)); } catch {}
+          try { localStorage.setItem('ti_usuario', JSON.stringify({ ...res.usuario, _inicio: Date.now() })); } catch {}
           window.location.href = 'dashboard.html';
         } else {
           mostrarError(res.codigo);

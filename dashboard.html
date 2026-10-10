@@ -211,6 +211,17 @@
   </style>
   <link rel="stylesheet" href="tema.css">
   <script src="tema.js"></script>
+  <script>
+    // Sin sesión iniciada (o con más de 12 horas) se manda al login antes de mostrar la página
+    (function () {
+      let u = null;
+      try { u = JSON.parse(localStorage.getItem('ti_usuario') || 'null'); } catch {}
+      if (!u || !u._inicio || Date.now() - u._inicio > 12 * 3600 * 1000) {
+        try { localStorage.removeItem('ti_usuario'); } catch {}
+        location.replace('login.html');
+      }
+    })();
+  </script>
 </head>
 <body>
 
@@ -410,7 +421,9 @@
 
   <script>
     // Si la página la sirve el backend (puerto 8000) se usa la misma dirección; si se abre con doble clic, el backend local.
-    const API = (location.protocol.startsWith('http') && location.port === '8000') ? '' : 'http://localhost:8000';
+    const API = (location.protocol.startsWith('http') &&
+               (location.port === '8000' || !['localhost', '127.0.0.1'].includes(location.hostname)))
+      ? '' : 'http://localhost:8000';
     const $ = id => document.getElementById(id);
 
     const VISTAS = {

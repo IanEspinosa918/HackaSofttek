@@ -9,8 +9,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, Response
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from pydantic import BaseModel, Field
 
 import db
@@ -458,12 +457,23 @@ def reportes(idsucursal: int | None = None, estado: str | None = None):
 
 
 # =====================================================================
-# Frontend: si existe la carpeta ../frontend se sirve en http://localhost:8000/app/
+# Frontend: se sirve en http://localhost:8000/app/ (útil para abrirlo desde una URL pública).
+# Busca las páginas en ../frontend o, si no existe, en la raíz del proyecto.
+# Solo se entregan estos archivos, para no exponer nada más de la carpeta (como backend/.env).
 # =====================================================================
-FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
-if FRONTEND.is_dir():
-    app.mount("/app", StaticFiles(directory=FRONTEND, html=True), name="frontend")
+_RAIZ = Path(__file__).resolve().parent.parent
+FRONTEND = _RAIZ / "frontend" if (_RAIZ / "frontend" / "login.html").is_file() else _RAIZ
+PAGINAS = {"login.html", "dashboard.html", "asistente.html", "tema.css", "tema.js"}
 
+if (FRONTEND / "login.html").is_file():
     @app.get("/", include_in_schema=False)
+    @app.get("/app", include_in_schema=False)
+    @app.get("/app/", include_in_schema=False)
     def raiz():
         return RedirectResponse("/app/login.html")
+
+    @app.get("/app/{archivo}", include_in_schema=False)
+    def pagina(archivo: str):
+        if archivo not in PAGINAS or not (FRONTEND / archivo).is_file():
+            raise HTTPException(status_code=404, detail="No encontrado")
+        return FileResponse(FRONTEND / archivo, headers={"Cache-Control": "no-cache"})
