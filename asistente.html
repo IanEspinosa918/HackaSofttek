@@ -178,6 +178,17 @@
   </style>
   <link rel="stylesheet" href="tema.css">
   <script src="tema.js"></script>
+  <script>
+    // Sin sesión iniciada (o con más de 12 horas) se manda al login antes de mostrar la página
+    (function () {
+      let u = null;
+      try { u = JSON.parse(localStorage.getItem('ti_usuario') || 'null'); } catch {}
+      if (!u || !u._inicio || Date.now() - u._inicio > 12 * 3600 * 1000) {
+        try { localStorage.removeItem('ti_usuario'); } catch {}
+        location.replace('login.html');
+      }
+    })();
+  </script>
 </head>
 <body>
 
@@ -273,6 +284,7 @@
           <button>¿Qué proveedores incumplen su contrato?</button>
           <button>¿Qué productos se piden de más?</button>
           <button>Hazme el reporte diario en PDF</button>
+          <button>Reporte extenso de mermas del último mes con causas, productos y comparativo entre sucursales</button>
         </div>
         <form class="entrada" id="formChat">
           <input id="inputChat" placeholder="Escribe tu pregunta…" autocomplete="off" maxlength="2000">
@@ -286,8 +298,10 @@
 
   <script>
     // Si la página la sirve el propio backend (http://localhost:8000/app/...) se usa la misma dirección;
-    // si se abre con doble clic, se apunta al backend local.
-    const API = (location.protocol.startsWith('http') && location.port === '8000') ? '' : 'http://localhost:8000';
+    // también si se abre desde una URL pública (túnel). Si se abre con doble clic, se apunta al backend local.
+    const API = (location.protocol.startsWith('http') &&
+               (location.port === '8000' || !['localhost', '127.0.0.1'].includes(location.hostname)))
+      ? '' : 'http://localhost:8000';
 
     const $ = id => document.getElementById(id);
     const estado = { tipo: null, idSesion: null, ocupado: false };
