@@ -431,6 +431,23 @@
     });
 
     // ---------- Utilidades ----------
+    // Descarga un PDF del backend (GET o POST) y lo guarda con su nombre
+    async function descargarPdf(ruta, nombre, opciones = {}) {
+      const res = await fetch(API + ruta, { headers: { 'Content-Type': 'application/json' }, ...opciones });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.detail || `Error ${res.status}`);
+      }
+      const cd = res.headers.get('Content-Disposition') || '';
+      const m = cd.match(/filename="?([^"]+)"?/);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = (m && m[1]) || nombre || 'reporte.pdf';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+
     async function api(ruta, opciones = {}) {
       const res = await fetch(API + ruta, { headers: { 'Content-Type': 'application/json' }, ...opciones });
       const datos = await res.json().catch(() => ({}));
@@ -791,7 +808,10 @@
       cont.innerHTML = `
         <div class="card-head">
           <div><h2>${esc(r.titulo)}</h2><p>${fecha(r.fecha, true)} · ${esc(r.autor)} · ${esc(r.sucursal)}</p></div>
-          <span class="badge ${ESTADO_REP[r.estado] || 'b-gris'}">${esc(r.estado)}</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="badge ${ESTADO_REP[r.estado] || 'b-gris'}">${esc(r.estado)}</span>
+            <button class="btn sm" id="btnPdfRep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg> PDF</button>
+          </div>
         </div>
         <div class="md">${markdown(r.contenido)}</div>
         ${r.comentario_gerente ? `<div class="comentario"><b>Comentario del gerente:</b> ${esc(r.comentario_gerente)}</div>` : ''}
@@ -799,6 +819,13 @@
         ${puedeRevisar ? `<div class="acciones" style="flex-direction:column;align-items:stretch">
             <textarea id="comentarioRep" placeholder="Comentario para el operador (opcional)"></textarea>
             <button class="btn" id="btnRevisarRep" style="align-self:flex-end">Marcar como revisado</button></div>` : ''}`;
+      $('btnPdfRep').addEventListener('click', async e => {
+        const b = e.currentTarget;
+        b.disabled = true;
+        try { await descargarPdf(`/api/reportes/${r.idreporte}/pdf`); }
+        catch (err) { toast('No se pudo descargar el PDF: ' + err.message, true); }
+        finally { b.disabled = false; }
+      });
       $('btnEnviarRep')?.addEventListener('click', async e => {
         e.target.disabled = true;
         try { await api(`/api/reportes/${r.idreporte}/enviar`, { method: 'POST' }); toast('Reporte enviado al gerente'); await cargarReportes(); }

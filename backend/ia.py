@@ -19,6 +19,7 @@ from google.genai import errors, types
 
 import db
 import logica
+import pdf_reporte
 
 load_dotenv()
 
@@ -219,6 +220,9 @@ Reglas:
 - Prefiere las herramientas específicas; usa consulta_sql solo si ninguna otra sirve.
 - Para saber si se pide de más o de menos usa merma_y_quiebres; para comparar sucursales usa merma_por_sucursal.
 - Si la pregunta es sobre todas las sucursales, llama la herramienta UNA vez sin idsucursal en lugar de una vez por sucursal.
+- Si piden un PDF, archivo o documento descargable: para el reporte diario usa generar_reporte_pdf; para cualquier otro
+  contenido, primero obtén los datos y luego usa crear_pdf con el contenido en Markdown. Después di en una frase qué
+  contiene el PDF y que el botón de descarga aparece debajo de tu mensaje. Nunca escribas la ruta ni la URL del archivo.
 - Expresa dinero con signo $ y dos decimales (ej. $1,234.50); los productos cuestan centavos o pocos dólares.
 - Cuando tenga sentido, termina con una acción concreta recomendada.
 - Si no hay datos para responder, dilo claramente.
@@ -304,7 +308,14 @@ def chatear(mensaje: str, id_sesion: str | None = None, idsucursal: int | None =
 
     # El chat guarda en su historial cada llamada a herramienta; se revisan solo las de este turno
     herramientas_usadas = []
+    archivos = []
     for contenido in sesion["chat"].get_history()[inicio_historial:]:
+        for parte in contenido.parts or []:
+            fr = getattr(parte, "function_response", None)
+            if fr and fr.name in HERRAMIENTAS_ARCHIVO and isinstance(fr.response, dict):
+                res = fr.response.get("result")
+                if isinstance(res, dict) and res.get("descarga") and all(a["descarga"] != res["descarga"] for a in archivos):
+                    archivos.append({"titulo": res.get("titulo"), "descarga": res["descarga"], "nombre": res.get("nombre")})
         for parte in contenido.parts or []:
             if parte.function_call and parte.function_call.name not in herramientas_usadas:
                 herramientas_usadas.append(parte.function_call.name)
@@ -313,6 +324,7 @@ def chatear(mensaje: str, id_sesion: str | None = None, idsucursal: int | None =
         "respuesta": _texto(respuesta) or "No pude generar una respuesta, intenta reformular la pregunta.",
         "id_sesion": id_sesion,
         "herramientas_usadas": herramientas_usadas,
+        "archivos": archivos,
         "modelo": sesion["modelo"],
     }
 
@@ -549,3 +561,52 @@ def _trabajador_de_sucursal(idsucursal: int) -> int:
                       WHEN t.idsucursal = ? THEN 1 ELSE 2 END, t.idtrabajador
     """, (idsucursal, idsucursal))
     return fila[0]["idtrabajador"] if fila else 1
+
+
+# =====================================================================
+# PDF DESCARGABLES (la IA los genera cuando se le pide)
+# =====================================================================
+_ARCHIVOS: dict[str, dict] = {}          # token -> contenido del PDF (en memoria, 2 horas)
+_ARCHIVOS_SEGUNDOS = 2 * 60 * 60
+
+
+def generar_reporte_pdf(idsucursal: int) -> dict:
+    """
+    Genera el REPORTE DIARIO de una sucursal (lo guarda como borrador) y lo deja listo para descargar en PDF.
+    Úsala cuando pidan el reporte diario en PDF, como archivo o para descargar.
+    """
+    r = consulta_predefinida("reporte", idsucursal)
+    return {"titulo": r["titulo"], "idreporte": r["idreporte"],
+            "descarga": f"/api/reportes/{r['idreporte']}/pdf" if r["idreporte"] else None,
+            "nombre": pdf_reporte.nombre_archivo(r["titulo"])}
+
+
+def crear_pdf(titulo: str, contenido: str) -> dict:
+    """
+    Crea un PDF descargable con un contenido que tú redactas en Markdown (títulos, viñetas, tablas).
+    Úsala cuando pidan en PDF algo distinto al reporte diario (descuentos, pedido sugerido, stock,
+    mermas, una respuesta anterior). Primero obtén los datos con las otras herramientas; el contenido
+    debe usar SOLO esos datos. `titulo` es corto, por ejemplo "Descuentos sugeridos - S001".
+    """
+    ahora = time.time()
+    for token in [t for t, a in _ARCHIVOS.items() if ahora - a["creado"] > _ARCHIVOS_SEGUNDOS]:
+        del _ARCHIVOS[token]
+    token = uuid.uuid4().hex
+    _ARCHIVOS[token] = {"titulo": titulo.strip()[:150] or "Reporte", "contenido": contenido,
+                        "fecha": logica.fecha_referencia().isoformat(), "creado": ahora}
+    return {"titulo": _ARCHIVOS[token]["titulo"], "descarga": f"/api/archivos/{token}",
+            "nombre": pdf_reporte.nombre_archivo(_ARCHIVOS[token]["titulo"])}
+
+
+def obtener_archivo(token: str) -> dict | None:
+    a = _ARCHIVOS.get(token)
+    if a and time.time() - a["creado"] <= _ARCHIVOS_SEGUNDOS:
+        return a
+    return None
+
+
+# Se agregan a las herramientas del chat (están definidas después de la lista principal)
+for _f in (generar_reporte_pdf, crear_pdf):
+    HERRAMIENTAS.append(_f)
+    _MAPA_HERRAMIENTAS[_f.__name__] = _f
+HERRAMIENTAS_ARCHIVO = {"generar_reporte_pdf", "crear_pdf"}

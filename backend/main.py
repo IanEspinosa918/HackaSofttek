@@ -9,13 +9,14 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import db
 import ia
 import logica
+import pdf_reporte
 from seguridad import verificar_contrasena
 
 app = FastAPI(title="Tienda Inteligente - API", version="0.1.0")
@@ -26,6 +27,7 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],   # para que el navegador lea el nombre del PDF
 )
 
 
@@ -52,6 +54,13 @@ class ConsultaEntrada(BaseModel):
     idsucursal: int
     idtrabajador: int | None = None
     forzar: bool = False          # True = volver a generar aunque haya una respuesta reciente guardada
+
+
+class PdfEntrada(BaseModel):
+    titulo: str = Field(min_length=1, max_length=200)
+    contenido: str = Field(min_length=1, max_length=50000)   # Markdown
+    sucursal: str | None = None
+    fecha: str | None = None
 
 
 class ReporteEntrada(BaseModel):
@@ -372,6 +381,49 @@ def reporte_revisar(idreporte: int, r: RevisionEntrada):
         WHERE idreporte = ?
     """, (r.idgerente, datetime.now(), r.comentario, idreporte))
     return {"idreporte": idreporte, "estado": "revisado"}
+
+
+def _respuesta_pdf(contenido: bytes, nombre: str) -> Response:
+    return Response(content=contenido, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{nombre}"'})
+
+
+@app.get("/api/reportes/{idreporte}/pdf", tags=["PDF"])
+def reporte_pdf(idreporte: int):
+    """Descarga un reporte guardado como PDF."""
+    filas = db.consultar("""
+        SELECT r.titulo, r.contenido, r.estado, r.fecha, r.comentario_gerente, RTRIM(s.nombre) AS sucursal,
+               t.nombre + ' ' + t.apellido AS autor
+        FROM reporte r
+        JOIN sucursal s   ON s.idsucursal   = r.idsucursal
+        JOIN trabajador t ON t.idtrabajador = r.idtrabajador
+        WHERE r.idreporte = ?
+    """, (idreporte,))
+    if not filas:
+        _error(ValueError("Reporte no encontrado"), 404)
+    r = filas[0]
+    pdf = pdf_reporte.generar_pdf(r["titulo"], r["contenido"], sucursal=r["sucursal"],
+                                  fecha=str(r["fecha"])[:16].replace("T", " "), autor=r["autor"],
+                                  estado=r["estado"], comentario_gerente=r["comentario_gerente"])
+    return _respuesta_pdf(pdf, pdf_reporte.nombre_archivo(r["titulo"]))
+
+
+@app.post("/api/pdf", tags=["PDF"])
+def contenido_pdf(entrada: PdfEntrada):
+    """Convierte cualquier contenido en Markdown (por ejemplo, una respuesta del asistente) en PDF."""
+    pdf = pdf_reporte.generar_pdf(entrada.titulo, entrada.contenido, sucursal=entrada.sucursal,
+                                  fecha=entrada.fecha or logica.fecha_referencia().isoformat())
+    return _respuesta_pdf(pdf, pdf_reporte.nombre_archivo(entrada.titulo))
+
+
+@app.get("/api/archivos/{token}", tags=["PDF"])
+def archivo_pdf(token: str):
+    """PDF creado por la IA desde el chat (disponible 2 horas)."""
+    a = ia.obtener_archivo(token)
+    if not a:
+        _error(ValueError("El archivo ya no está disponible; pídele a la IA que lo vuelva a generar"), 404)
+    pdf = pdf_reporte.generar_pdf(a["titulo"], a["contenido"], fecha=a["fecha"])
+    return _respuesta_pdf(pdf, pdf_reporte.nombre_archivo(a["titulo"]))
 
 
 @app.get("/api/reportes", tags=["IA"])
