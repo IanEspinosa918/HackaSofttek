@@ -61,6 +61,8 @@ class PdfEntrada(BaseModel):
     contenido: str = Field(min_length=1, max_length=50000)   # Markdown
     sucursal: str | None = None
     fecha: str | None = None
+    idsucursal: int | None = None     # si viene, el PDF incluye gráficas con los datos de esa sucursal
+    tipo: str | None = None           # reporte | descuentos | pedidos | stock (elige qué gráficas)
 
 
 class ReporteEntrada(BaseModel):
@@ -389,10 +391,10 @@ def _respuesta_pdf(contenido: bytes, nombre: str) -> Response:
 
 
 @app.get("/api/reportes/{idreporte}/pdf", tags=["PDF"])
-def reporte_pdf(idreporte: int):
+def reporte_pdf(idreporte: int, tema: str = "claro"):
     """Descarga un reporte guardado como PDF."""
     filas = db.consultar("""
-        SELECT r.titulo, r.contenido, r.estado, r.fecha, r.comentario_gerente, RTRIM(s.nombre) AS sucursal,
+        SELECT r.idsucursal, r.titulo, r.contenido, r.estado, r.fecha, r.comentario_gerente, RTRIM(s.nombre) AS sucursal,
                t.nombre + ' ' + t.apellido AS autor
         FROM reporte r
         JOIN sucursal s   ON s.idsucursal   = r.idsucursal
@@ -402,27 +404,35 @@ def reporte_pdf(idreporte: int):
     if not filas:
         _error(ValueError("Reporte no encontrado"), 404)
     r = filas[0]
+    # Los indicadores son los actuales: solo se ponen si el reporte es del día de referencia
+    indicadores = None
+    if str(r["fecha"])[:10] == logica.fecha_referencia().isoformat():
+        indicadores = logica.resumen_sucursal(r["idsucursal"])
     pdf = pdf_reporte.generar_pdf(r["titulo"], r["contenido"], sucursal=r["sucursal"],
                                   fecha=str(r["fecha"])[:16].replace("T", " "), autor=r["autor"],
-                                  estado=r["estado"], comentario_gerente=r["comentario_gerente"])
+                                  estado=r["estado"], comentario_gerente=r["comentario_gerente"],
+                                  indicadores=indicadores, graficas="reporte", idsucursal=r["idsucursal"],
+                                  tema=tema)
     return _respuesta_pdf(pdf, pdf_reporte.nombre_archivo(r["titulo"]))
 
 
 @app.post("/api/pdf", tags=["PDF"])
-def contenido_pdf(entrada: PdfEntrada):
+def contenido_pdf(entrada: PdfEntrada, tema: str = "claro"):
     """Convierte cualquier contenido en Markdown (por ejemplo, una respuesta del asistente) en PDF."""
     pdf = pdf_reporte.generar_pdf(entrada.titulo, entrada.contenido, sucursal=entrada.sucursal,
-                                  fecha=entrada.fecha or logica.fecha_referencia().isoformat())
+                                  fecha=entrada.fecha or logica.fecha_referencia().isoformat(),
+                                  graficas=entrada.tipo or "otro", idsucursal=entrada.idsucursal, tema=tema)
     return _respuesta_pdf(pdf, pdf_reporte.nombre_archivo(entrada.titulo))
 
 
 @app.get("/api/archivos/{token}", tags=["PDF"])
-def archivo_pdf(token: str):
+def archivo_pdf(token: str, tema: str = "claro"):
     """PDF creado por la IA desde el chat (disponible 2 horas)."""
     a = ia.obtener_archivo(token)
     if not a:
         _error(ValueError("El archivo ya no está disponible; pídele a la IA que lo vuelva a generar"), 404)
-    pdf = pdf_reporte.generar_pdf(a["titulo"], a["contenido"], fecha=a["fecha"])
+    pdf = pdf_reporte.generar_pdf(a["titulo"], a["contenido"], fecha=a["fecha"],
+                                  graficas=a.get("tema") or "otro", idsucursal=a.get("idsucursal"), tema=tema)
     return _respuesta_pdf(pdf, pdf_reporte.nombre_archivo(a["titulo"]))
 
 

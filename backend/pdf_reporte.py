@@ -24,6 +24,37 @@ GRIS = colors.HexColor("#6f6a64")
 LINEA = colors.HexColor("#e3ddd4")
 FONDO = colors.HexColor("#f4f1ec")
 
+H = colors.HexColor
+# Mismos temas que la página (frontend/tema.css). mag = gradientes para magnitud baja, media y alta.
+PALETAS = {
+    "oscuro": dict(fondo=H("#1d2042"), panel=H("#282c55"), panel2=H("#30356a"), tinta=H("#eef0ff"),
+                   gris=H("#a6abd6"), linea=H("#3b4078"), marca=H("#8b5cf6"), marca2=H("#c026d3"),
+                   acento=H("#f59e0b"), pista=H("#343a6e"), titulo=H("#c4b5fd"),
+                   mag=[(H("#22d3ee"), H("#3b82f6")), (H("#fcd34d"), H("#f97316")), (H("#fb7185"), H("#e11d48"))]),
+    "claro": dict(fondo=H("#ffffff"), panel=H("#f8f7ff"), panel2=H("#efe9fe"), tinta=H("#1e1b3a"),
+                  gris=H("#6b6f91"), linea=H("#e4e5f3"), marca=H("#7c3aed"), marca2=H("#c026d3"),
+                  acento=H("#f59e0b"), pista=H("#f1f0f9"), titulo=H("#6d28d9"),
+                  mag=[(H("#22d3ee"), H("#2563eb")), (H("#fbbf24"), H("#ea580c")), (H("#fb7185"), H("#be123c"))]),
+    "esmeralda": dict(fondo=H("#ffffff"), panel=H("#f4f1ec"), panel2=H("#e6efeb"), tinta=H("#1d1b19"),
+                      gris=H("#6f6a64"), linea=H("#e3ddd4"), marca=H("#1f5c4a"), marca2=H("#2f8a6c"),
+                      acento=H("#e8a33d"), pista=H("#f1ede6"), titulo=H("#1f5c4a"),
+                      mag=[(H("#60a5fa"), H("#2563eb")), (H("#fbbf24"), H("#d97706")), (H("#f87171"), H("#b91c1c"))]),
+    "oceano": dict(fondo=H("#0a1828"), panel=H("#102740"), panel2=H("#15314f"), tinta=H("#e6f1fb"),
+                   gris=H("#8fb0c9"), linea=H("#1f3e5c"), marca=H("#06b6d4"), marca2=H("#3b82f6"),
+                   acento=H("#f59e0b"), pista=H("#1a3856"), titulo=H("#67e8f9"),
+                   mag=[(H("#a78bfa"), H("#7c3aed")), (H("#fcd34d"), H("#f59e0b")), (H("#fb7185"), H("#e11d48"))]),
+}
+
+
+def paleta(tema: str | None) -> dict:
+    return PALETAS.get((tema or "").lower(), PALETAS["claro"])
+
+
+def mezclar(c1, c2, t: float):
+    """Color intermedio entre c1 y c2 (t de 0 a 1), para simular gradientes."""
+    return colors.Color(c1.red + (c2.red - c1.red) * t, c1.green + (c2.green - c1.green) * t,
+                        c1.blue + (c2.blue - c1.blue) * t)
+
 # Las fuentes estándar del PDF no traen emojis ni algunos símbolos: se reemplazan por texto
 _REEMPLAZOS = {
     "⚠️": "(!)", "⚠": "(!)", "✅": "(ok)", "❌": "(x)", "👍": "", "📉": "", "📈": "", "🔴": "", "🟡": "",
@@ -49,8 +80,9 @@ def _en_linea(texto: str) -> str:
     return t
 
 
-def _estilos():
+def _estilos(P: dict):
     base = getSampleStyleSheet()
+    TINTA, GRIS, VERDE = P["tinta"], P["gris"], P["titulo"]
     return {
         "titulo": ParagraphStyle("titulo", parent=base["Title"], fontName="Helvetica-Bold", fontSize=18,
                                  leading=22, textColor=TINTA, alignment=TA_LEFT, spaceAfter=4),
@@ -61,6 +93,8 @@ def _estilos():
                              leading=16, textColor=VERDE, spaceBefore=12, spaceAfter=4),
         "h3": ParagraphStyle("h3", parent=base["Heading3"], fontName="Helvetica-Bold", fontSize=11,
                              leading=14, textColor=TINTA, spaceBefore=8, spaceAfter=3),
+        "seccion": ParagraphStyle("seccion", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=8.5,
+                                  leading=11, textColor=GRIS, spaceBefore=10, spaceAfter=6),
         "p": ParagraphStyle("p", parent=base["Normal"], fontSize=10, leading=14.5, textColor=TINTA, spaceAfter=5),
         "li": ParagraphStyle("li", parent=base["Normal"], fontSize=10, leading=14, textColor=TINTA),
         "celda": ParagraphStyle("celda", parent=base["Normal"], fontSize=8.5, leading=11, textColor=TINTA),
@@ -72,7 +106,7 @@ def _estilos():
     }
 
 
-def _tabla(filas: list[list[str]], estilos, ancho: float) -> Table:
+def _tabla(filas: list[list[str]], estilos, ancho: float, P: dict) -> Table:
     n = max(len(f) for f in filas)
     filas = [f + [""] * (n - len(f)) for f in filas]
     datos = [[Paragraph(_en_linea(c), estilos["celda_h"] if i == 0 else estilos["celda"]) for c in fila]
@@ -84,8 +118,10 @@ def _tabla(filas: list[list[str]], estilos, ancho: float) -> Table:
     escala = ancho / sum(anchos)
     t = Table(datos, colWidths=[a * escala for a in anchos], repeatRows=1)
     t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), FONDO),
-        ("LINEBELOW", (0, 0), (-1, -1), 0.5, LINEA),
+        ("BACKGROUND", (0, 0), (-1, 0), P["pista"]),
+        ("BACKGROUND", (0, 1), (-1, -1), P["panel"]),
+        ("LINEBELOW", (0, 0), (-1, -1), 0.5, P["linea"]),
+        ("LINEABOVE", (0, 0), (-1, 0), 1.5, P["marca"]),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING", (0, 0), (-1, -1), 5),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
@@ -95,7 +131,7 @@ def _tabla(filas: list[list[str]], estilos, ancho: float) -> Table:
     return t
 
 
-def _markdown_a_flowables(texto: str, estilos, ancho: float) -> list:
+def _markdown_a_flowables(texto: str, estilos, ancho: float, P: dict) -> list:
     lineas = (texto or "").replace("\r", "").split("\n")
     historia, lista, tipo_lista = [], [], None
 
@@ -106,7 +142,7 @@ def _markdown_a_flowables(texto: str, estilos, ancho: float) -> list:
                 [ListItem(Paragraph(_en_linea(x), estilos["li"]), leftIndent=14) for x in lista],
                 bulletType="1" if tipo_lista == "ol" else "bullet",
                 start="1" if tipo_lista == "ol" else None,
-                bulletFontSize=9, leftIndent=14, bulletColor=VERDE,
+                bulletFontSize=9, leftIndent=14, bulletColor=P["marca"],
             ))
             historia.append(Spacer(1, 4))
         lista, tipo_lista = [], None
@@ -123,7 +159,7 @@ def _markdown_a_flowables(texto: str, estilos, ancho: float) -> list:
             while i < len(lineas) and re.match(r"^\|.*\|$", lineas[i].strip()):
                 filas.append(celdas(lineas[i]))
                 i += 1
-            historia.append(_tabla(filas, estilos, ancho))
+            historia.append(_tabla(filas, estilos, ancho, P))
             historia.append(Spacer(1, 8))
             continue
         if m := re.match(r"^(#{1,3})\s+(.*)$", t):
@@ -161,7 +197,7 @@ ETIQUETAS_INDICADORES = {
 }
 
 
-def _tarjetas_indicadores(indicadores: dict, estilos, ancho: float) -> Table:
+def _tarjetas_indicadores(indicadores: dict, estilos, ancho: float, P: dict) -> Table:
     celdas = []
     for clave, (etiqueta, tipo) in ETIQUETAS_INDICADORES.items():
         if clave not in indicadores:
@@ -174,9 +210,9 @@ def _tarjetas_indicadores(indicadores: dict, estilos, ancho: float) -> Table:
     filas = [f + [""] * (columnas - len(f)) for f in filas]
     t = Table(filas, colWidths=[ancho / columnas] * columnas)
     t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), FONDO),
-        ("BOX", (0, 0), (-1, -1), 0, colors.white),
-        ("INNERGRID", (0, 0), (-1, -1), 3, colors.white),
+        ("BACKGROUND", (0, 0), (-1, -1), P["panel2"]),
+        ("INNERGRID", (0, 0), (-1, -1), 4, P["fondo"]),
+        ("LINEABOVE", (0, 0), (-1, 0), 2, P["marca"]),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("TOPPADDING", (0, 0), (-1, -1), 7),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
@@ -187,15 +223,22 @@ def _tarjetas_indicadores(indicadores: dict, estilos, ancho: float) -> Table:
 
 def generar_pdf(titulo: str, contenido: str, sucursal: str | None = None, fecha: str | None = None,
                 autor: str | None = None, estado: str | None = None, indicadores: dict | None = None,
-                comentario_gerente: str | None = None) -> bytes:
-    """Regresa los bytes del PDF listo para descargar."""
+                comentario_gerente: str | None = None, graficas: str | None = None,
+                idsucursal: int | None = None, tema: str | None = "claro") -> bytes:
+    """
+    Regresa los bytes del PDF listo para descargar.
+    `graficas` = tipo de gráficas a incluir ("reporte", "descuentos", "pedidos", "stock" u "otro")
+    calculadas con los datos de la sucursal `idsucursal`.
+    `tema` = aspecto visual (oscuro, claro, esmeralda, oceano), el mismo que eligió el usuario en la página.
+    """
+    P = paleta(tema)
     buffer = io.BytesIO()
     margen = 1.8 * cm
     doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=margen, rightMargin=margen,
                             topMargin=2.3 * cm, bottomMargin=1.8 * cm,
                             title=_limpiar(titulo), author="Tienda Inteligente")
     ancho = letter[0] - 2 * margen
-    estilos = _estilos()
+    estilos = _estilos(P)
 
     detalles = [x for x in [
         f"Sucursal: {sucursal}" if sucursal else None,
@@ -209,14 +252,22 @@ def generar_pdf(titulo: str, contenido: str, sucursal: str | None = None, fecha:
         historia.append(Paragraph(_en_linea("  ·  ".join(detalles)), estilos["sub"]))
     historia.append(Spacer(1, 12))
     if indicadores:
-        historia.append(_tarjetas_indicadores(indicadores, estilos, ancho))
+        historia.append(_tarjetas_indicadores(indicadores, estilos, ancho, P))
         historia.append(Spacer(1, 10))
-    historia += _markdown_a_flowables(contenido, estilos, ancho)
+    if graficas and idsucursal is not None:
+        import graficas_pdf   # import aquí para evitar importación circular
+        bloques = graficas_pdf.graficas_para(graficas, idsucursal, ancho, P)
+        if bloques:
+            historia.append(Paragraph("PANORAMA EN GRÁFICAS", estilos["seccion"]))
+            historia += bloques
+            historia.append(Paragraph("ANÁLISIS Y RECOMENDACIONES DE LA IA", estilos["seccion"]))
+    historia += _markdown_a_flowables(contenido, estilos, ancho, P)
     if comentario_gerente:
         historia.append(Spacer(1, 10))
         caja = Table([[Paragraph(_en_linea(f"**Comentario del gerente:** {comentario_gerente}"), estilos["p"])]],
                      colWidths=[ancho])
-        caja.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), VERDE_SUAVE),
+        caja.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), P["panel2"]),
+                                  ("LINEBEFORE", (0, 0), (0, -1), 3, P["marca"]),
                                   ("LEFTPADDING", (0, 0), (-1, -1), 10), ("TOPPADDING", (0, 0), (-1, -1), 8),
                                   ("BOTTOMPADDING", (0, 0), (-1, -1), 6)]))
         historia.append(caja)
@@ -226,18 +277,26 @@ def generar_pdf(titulo: str, contenido: str, sucursal: str | None = None, fecha:
     def encabezado_y_pie(canvas, documento):
         canvas.saveState()
         ancho_pag, alto_pag = letter
-        # Franja superior
-        canvas.setFillColor(VERDE)
-        canvas.rect(0, alto_pag - 1.1 * cm, ancho_pag, 1.1 * cm, stroke=0, fill=1)
-        canvas.setFillColor(AMBAR)
-        canvas.rect(0, alto_pag - 1.1 * cm - 3, ancho_pag, 3, stroke=0, fill=1)
+        # Fondo de la página con el color del tema
+        canvas.setFillColor(P["fondo"])
+        canvas.rect(0, 0, ancho_pag, alto_pag, stroke=0, fill=1)
+        # Franja superior en gradiente (color de marca -> segundo color del tema)
+        alto_franja, pasos = 1.1 * cm, 80
+        for k in range(pasos):
+            canvas.setFillColor(mezclar(P["marca"], P["marca2"], k / (pasos - 1)))
+            canvas.rect(ancho_pag * k / pasos, alto_pag - alto_franja, ancho_pag / pasos + 1, alto_franja, stroke=0, fill=1)
+        canvas.setFillColor(P["acento"])
+        canvas.rect(0, alto_pag - alto_franja - 2.5, ancho_pag, 2.5, stroke=0, fill=1)
         canvas.setFillColor(colors.white)
         canvas.setFont("Helvetica-Bold", 11)
         canvas.drawString(margen, alto_pag - 0.72 * cm, "Tienda Inteligente")
         canvas.setFont("Helvetica", 8.5)
         canvas.drawRightString(ancho_pag - margen, alto_pag - 0.72 * cm, "Reporte de inventario y mermas")
         # Pie
-        canvas.setFillColor(GRIS)
+        canvas.setStrokeColor(P["linea"])
+        canvas.setLineWidth(0.5)
+        canvas.line(margen, 1.4 * cm, ancho_pag - margen, 1.4 * cm)
+        canvas.setFillColor(P["gris"])
         canvas.setFont("Helvetica", 7.5)
         canvas.drawString(margen, 1.0 * cm, f"Generado con IA a partir de los datos del sistema · {generado}")
         canvas.drawRightString(ancho_pag - margen, 1.0 * cm, f"Página {documento.page}")

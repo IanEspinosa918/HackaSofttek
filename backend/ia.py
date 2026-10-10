@@ -581,19 +581,23 @@ def generar_reporte_pdf(idsucursal: int) -> dict:
             "nombre": pdf_reporte.nombre_archivo(r["titulo"])}
 
 
-def crear_pdf(titulo: str, contenido: str) -> dict:
+def crear_pdf(titulo: str, contenido: str, idsucursal: int | None = None, tema: str = "mermas") -> dict:
     """
     Crea un PDF descargable con un contenido que tú redactas en Markdown (títulos, viñetas, tablas).
     Úsala cuando pidan en PDF algo distinto al reporte diario (descuentos, pedido sugerido, stock,
     mermas, una respuesta anterior). Primero obtén los datos con las otras herramientas; el contenido
     debe usar SOLO esos datos. `titulo` es corto, por ejemplo "Descuentos sugeridos - S001".
+    `idsucursal` es la sucursal del contenido: con ella el PDF incluye gráficas automáticas.
+    `tema` elige las gráficas: "descuentos", "pedidos", "stock" o "mermas".
     """
     ahora = time.time()
     for token in [t for t, a in _ARCHIVOS.items() if ahora - a["creado"] > _ARCHIVOS_SEGUNDOS]:
         del _ARCHIVOS[token]
     token = uuid.uuid4().hex
     _ARCHIVOS[token] = {"titulo": titulo.strip()[:150] or "Reporte", "contenido": contenido,
-                        "fecha": logica.fecha_referencia().isoformat(), "creado": ahora}
+                        "fecha": logica.fecha_referencia().isoformat(), "creado": ahora,
+                        "idsucursal": idsucursal,
+                        "tema": tema if tema in ("descuentos", "pedidos", "stock") else "otro"}
     return {"titulo": _ARCHIVOS[token]["titulo"], "descarga": f"/api/archivos/{token}",
             "nombre": pdf_reporte.nombre_archivo(_ARCHIVOS[token]["titulo"])}
 

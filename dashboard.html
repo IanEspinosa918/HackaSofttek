@@ -209,6 +209,8 @@
       select { max-width: 100%; }
     }
   </style>
+  <link rel="stylesheet" href="tema.css">
+  <script src="tema.js"></script>
 </head>
 <body>
 
@@ -296,10 +298,11 @@
 
       <div class="grid">
         <article class="card span-6">
-          <div class="card-head"><div><h2>Merma por semana</h2><p>Costo de la merma registrada · últimas 8 semanas</p></div></div>
+          <div class="card-head"><div><h2>Merma por semana</h2><p>Costo de la merma registrada · últimas 8 semanas · la semana actual va remarcada</p></div></div>
           <div class="chart" id="chartSemanal">
             <div class="bars" id="bars"></div>
             <div class="x-labels" id="xLabels"></div>
+            <div id="leyendaSemanal"></div>
             <div class="tooltip" id="tooltip"></div>
           </div>
         </article>
@@ -433,6 +436,8 @@
     // ---------- Utilidades ----------
     // Descarga un PDF del backend (GET o POST) y lo guarda con su nombre
     async function descargarPdf(ruta, nombre, opciones = {}) {
+      const tema = (window.TemaVisual && TemaVisual.actual()) || 'claro';
+      ruta += (ruta.includes('?') ? '&' : '?') + 'tema=' + encodeURIComponent(tema);   // el PDF sale con el mismo aspecto
       const res = await fetch(API + ruta, { headers: { 'Content-Type': 'application/json' }, ...opciones });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -523,12 +528,13 @@
     function barrasHorizontales(el, filas, { nombre, valor, resaltar } = {}) {
       if (!filas.length) { el.innerHTML = '<div class="vacio">Sin mermas registradas en este periodo.</div>'; return; }
       const max = Math.max(...filas.map(f => Number(f[valor]) || 0)) || 1;
+      // El color de cada barra depende de su magnitud (baja, media o alta) respecto a la mayor
       el.innerHTML = filas.map(f => `
         <div class="hrow ${resaltar && resaltar(f) ? 'actual' : ''}" title="${esc(f[nombre])}: ${dinero(f[valor])}">
-          <span class="nombre">${esc(f[nombre])}</span>
-          <div class="htrack"><div class="hfill" style="width:${(Number(f[valor]) || 0) / max * 100}%"></div></div>
+          <span class="nombre">${esc(f[nombre])}${resaltar && resaltar(f) ? ' (esta)' : ''}</span>
+          <div class="htrack"><div class="hfill ${TemaVisual.magnitud(f[valor], max)}" style="width:${(Number(f[valor]) || 0) / max * 100}%"></div></div>
           <span class="num">${dinero(f[valor])}</span>
-        </div>`).join('');
+        </div>`).join('') + TemaVisual.leyenda();
     }
 
     // ---------- INVENTARIO Y MERMAS ----------
@@ -609,9 +615,10 @@
       const sem = mermas.por_semana;
       const maxS = Math.max(...sem.map(s => Number(s.costo_total) || 0), 0) || 1;
       $('bars').innerHTML = sem.length ? sem.map((s, i) => `
-        <div class="bar-col" data-i="${i}"><div class="bar ${i === sem.length - 1 ? 'actual' : ''}" style="height:${(Number(s.costo_total) || 0) / maxS * 100}%"></div></div>`).join('')
+        <div class="bar-col" data-i="${i}"><div class="bar ${TemaVisual.magnitud(s.costo_total, maxS)} ${i === sem.length - 1 ? 'actual' : ''}" style="height:${(Number(s.costo_total) || 0) / maxS * 100}%"></div></div>`).join('')
         : '<div class="vacio" style="width:100%;align-self:center">Sin mermas en las últimas semanas.</div>';
       $('xLabels').innerHTML = sem.map(s => `<span>${fecha(s.desde)}</span>`).join('');
+      $('leyendaSemanal').innerHTML = sem.length ? TemaVisual.leyenda(['Semana baja', 'Media', 'Alta (más merma)']) : '';
       const tip = $('tooltip');
       $('bars').querySelectorAll('.bar-col').forEach(col => {
         col.addEventListener('mouseenter', () => {

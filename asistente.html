@@ -176,6 +176,8 @@
       .md td, .md th { white-space: nowrap; }
     }
   </style>
+  <link rel="stylesheet" href="tema.css">
+  <script src="tema.js"></script>
 </head>
 <body>
 
@@ -300,6 +302,8 @@
 
     // Descarga un PDF del backend (GET o POST) y lo guarda con su nombre
     async function descargarPdf(ruta, nombre, opciones = {}) {
+      const tema = (window.TemaVisual && TemaVisual.actual()) || 'claro';
+      ruta += (ruta.includes('?') ? '&' : '?') + 'tema=' + encodeURIComponent(tema);   // el PDF sale con el mismo aspecto
       const res = await fetch(API + ruta, { headers: { 'Content-Type': 'application/json' }, ...opciones });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -459,7 +463,8 @@
       try {
         if (r.idreporte) await descargarPdf(`/api/reportes/${r.idreporte}/pdf`);
         else await descargarPdf('/api/pdf', null, { method: 'POST', body: JSON.stringify({
-          titulo: r.titulo, contenido: r.contenido, sucursal: $('sucursal').selectedOptions[0]?.textContent || null }) });
+          titulo: r.titulo, contenido: r.contenido, sucursal: $('sucursal').selectedOptions[0]?.textContent || null,
+          idsucursal: idSucursal(), tipo: r.tipo || estado.tipo }) });
       } catch (e) { alert('No se pudo descargar el PDF: ' + e.message); }
       finally { b.disabled = false; }
     });

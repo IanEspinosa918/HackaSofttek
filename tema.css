@@ -1,0 +1,243 @@
+/* =====================================================================
+   tema.css - Temas visuales compartidos por todas las páginas
+   (login, dashboard y asistente). El tema activo lo pone tema.js en
+   <html data-tema="...">. Solo cambia la estética, no el contenido.
+   ===================================================================== */
+
+/* ---------- Oscuro (morado / azul noche) ---------- */
+html[data-tema="oscuro"] {
+  --bg: #1d2042; --bg-2: #272b55;
+  --panel: #282c55; --panel-2: #30356a;
+  --ink: #eef0ff; --muted: #a6abd6; --line: #3b4078;
+  --brand: #8b5cf6; --brand-2: #c026d3; --brand-dark: #7c3aed;
+  --brand-soft: rgba(139, 92, 246, .18); --brand-soft-hover: rgba(139, 92, 246, .3);
+  --accent: #f59e0b;
+  --crit: #fb7185; --crit-bg: rgba(251, 113, 133, .16);
+  --warn: #fbbf24; --warn-bg: rgba(251, 191, 36, .16);
+  --ok: #34d399;   --ok-bg: rgba(52, 211, 153, .16);
+  --info: #60a5fa; --info-bg: rgba(96, 165, 250, .16);
+  --side-bg: #20234a; --side-ink: #eef0ff; --side-muted: #a6abd6; --side-hover: rgba(255, 255, 255, .06);
+  --input-bg: #20244b; --ring: rgba(139, 92, 246, .3);
+  --borde-1: rgba(139, 92, 246, .55); --borde-2: rgba(236, 72, 153, .35); --borde-3: rgba(59, 130, 246, .25);
+  --sombra: 0 18px 40px -24px rgba(0, 0, 0, .7);
+  --pista: rgba(255, 255, 255, .06);
+  --mag-baja-1: #22d3ee; --mag-baja-2: #3b82f6;
+  --mag-media-1: #fcd34d; --mag-media-2: #f97316;
+  --mag-alta-1: #fb7185; --mag-alta-2: #e11d48;
+  color-scheme: dark;
+}
+
+/* ---------- Claro (lavanda) ---------- */
+html[data-tema="claro"] {
+  --bg: #eef0fa; --bg-2: #f6f6fd;
+  --panel: #ffffff; --panel-2: #f8f7ff;
+  --ink: #1e1b3a; --muted: #6b6f91; --line: #e4e5f3;
+  --brand: #7c3aed; --brand-2: #c026d3; --brand-dark: #6d28d9;
+  --brand-soft: #efe9fe; --brand-soft-hover: #e2d6fd;
+  --accent: #f59e0b;
+  --crit: #be123c; --crit-bg: #ffe4e9;
+  --warn: #b45309; --warn-bg: #fef3c7;
+  --ok: #047857;   --ok-bg: #d1fae5;
+  --info: #1d4ed8; --info-bg: #dbeafe;
+  --side-bg: #ffffff; --side-ink: #1e1b3a; --side-muted: #6b6f91; --side-hover: #f3f0fe;
+  --input-bg: #f8f8fd; --ring: rgba(124, 58, 237, .18);
+  --borde-1: rgba(124, 58, 237, .35); --borde-2: rgba(236, 72, 153, .22); --borde-3: rgba(59, 130, 246, .18);
+  --sombra: 0 16px 34px -26px rgba(30, 27, 58, .45);
+  --pista: #f1f0f9;
+  --mag-baja-1: #22d3ee; --mag-baja-2: #2563eb;
+  --mag-media-1: #fbbf24; --mag-media-2: #ea580c;
+  --mag-alta-1: #fb7185; --mag-alta-2: #be123c;
+  color-scheme: light;
+}
+
+/* ---------- Esmeralda (la paleta original del proyecto) ---------- */
+html[data-tema="esmeralda"] {
+  --bg: #f4f1ec; --bg-2: #f8f6f2;
+  --panel: #ffffff; --panel-2: #fbfaf7;
+  --ink: #1d1b19; --muted: #6f6a64; --line: #e9e4dc;
+  --brand: #1f5c4a; --brand-2: #2f8a6c; --brand-dark: #164537;
+  --brand-soft: #e6efeb; --brand-soft-hover: #d7e6df;
+  --accent: #e8a33d;
+  --crit: #b42318; --crit-bg: #fdecea;
+  --warn: #a15c07; --warn-bg: #fdf3e2;
+  --ok: #1e7a46;   --ok-bg: #e5f4ea;
+  --info: #2b5c8a; --info-bg: #e7eff7;
+  --side-bg: #1f5c4a; --side-ink: #f4f1ec; --side-muted: rgba(244, 241, 236, .78); --side-hover: rgba(244, 241, 236, .1);
+  --input-bg: #fbfaf8; --ring: rgba(31, 92, 74, .14);
+  --borde-1: rgba(31, 92, 74, .35); --borde-2: rgba(232, 163, 61, .35); --borde-3: rgba(31, 92, 74, .12);
+  --sombra: 0 16px 34px -26px rgba(29, 27, 25, .4);
+  --pista: #f1ede6;
+  --mag-baja-1: #60a5fa; --mag-baja-2: #2563eb;
+  --mag-media-1: #fbbf24; --mag-media-2: #d97706;
+  --mag-alta-1: #f87171; --mag-alta-2: #b91c1c;
+  color-scheme: light;
+}
+
+/* ---------- Océano (azul profundo / cian) ---------- */
+html[data-tema="oceano"] {
+  --bg: #0a1828; --bg-2: #0f2238;
+  --panel: #102740; --panel-2: #15314f;
+  --ink: #e6f1fb; --muted: #8fb0c9; --line: #1f3e5c;
+  --brand: #06b6d4; --brand-2: #3b82f6; --brand-dark: #0891b2;
+  --brand-soft: rgba(6, 182, 212, .16); --brand-soft-hover: rgba(6, 182, 212, .28);
+  --accent: #f59e0b;
+  --crit: #fb7185; --crit-bg: rgba(251, 113, 133, .16);
+  --warn: #fbbf24; --warn-bg: rgba(251, 191, 36, .16);
+  --ok: #34d399;   --ok-bg: rgba(52, 211, 153, .16);
+  --info: #93c5fd; --info-bg: rgba(147, 197, 253, .16);
+  --side-bg: #0c1d31; --side-ink: #e6f1fb; --side-muted: #8fb0c9; --side-hover: rgba(255, 255, 255, .06);
+  --input-bg: #0c1f34; --ring: rgba(6, 182, 212, .28);
+  --borde-1: rgba(6, 182, 212, .5); --borde-2: rgba(167, 139, 250, .35); --borde-3: rgba(59, 130, 246, .25);
+  --sombra: 0 18px 40px -24px rgba(0, 0, 0, .75);
+  --pista: rgba(255, 255, 255, .06);
+  --mag-baja-1: #a78bfa; --mag-baja-2: #7c3aed;
+  --mag-media-1: #fcd34d; --mag-media-2: #f59e0b;
+  --mag-alta-1: #fb7185; --mag-alta-2: #e11d48;
+  color-scheme: dark;
+}
+
+/* =====================================================================
+   Estilos comunes a todos los temas
+   ===================================================================== */
+html[data-tema] body {
+  background: radial-gradient(1200px 600px at 85% -10%, var(--bg-2), transparent 60%), var(--bg);
+  background-attachment: fixed;
+  color: var(--ink);
+  transition: background-color .25s, color .25s;
+}
+
+/* Barra lateral */
+html[data-tema] .sidebar { background: var(--side-bg); color: var(--side-ink); border-right: 1px solid var(--line); }
+html[data-tema] .nav a { color: var(--side-muted); }
+html[data-tema] .nav a:hover { background: var(--side-hover); color: var(--side-ink); }
+html[data-tema] .nav a.active {
+  background: linear-gradient(90deg, var(--brand), var(--brand-2));
+  color: #fff; box-shadow: 0 8px 20px -10px var(--brand);
+}
+html[data-tema] .nav .sep { background: var(--line); }
+html[data-tema] .user { background: var(--side-hover); }
+html[data-tema] .user small, html[data-tema] .user .salir { color: var(--side-muted); }
+html[data-tema] .user .salir:hover { color: var(--side-ink); background: var(--side-hover); }
+
+/* Tarjetas con borde en gradiente */
+html[data-tema] .card, html[data-tema] .kpi, html[data-tema] .opcion, html[data-tema] .modal,
+html[data-tema] .login, html[data-tema] .rep-item, html[data-tema] .prov-bloque {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(160deg, var(--panel-2), var(--panel)) padding-box,
+    linear-gradient(135deg, var(--borde-1), var(--borde-3) 45%, var(--borde-2)) border-box;
+  box-shadow: var(--sombra);
+}
+html[data-tema] .opcion.activa, html[data-tema] .rep-item.sel {
+  background:
+    linear-gradient(160deg, var(--panel-2), var(--panel)) padding-box,
+    linear-gradient(135deg, var(--brand), var(--brand-2)) border-box;
+}
+html[data-tema] .opcion .ico, html[data-tema] .logo-mark { background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: #fff; }
+html[data-tema] .logo-mark svg { stroke: #fff; }
+html[data-tema] .kpi .value, html[data-tema] .card-head h2 { color: var(--ink); }
+
+/* Botones */
+html[data-tema] .btn:not(.ghost) { background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: #fff; }
+html[data-tema] .btn:not(.ghost):hover { filter: brightness(1.08); }
+html[data-tema] .btn.ghost { background: var(--brand-soft); color: var(--ink); }
+html[data-tema] .btn.ghost:hover { background: var(--brand-soft-hover); }
+html[data-tema] .filtros button { background: transparent; border-color: var(--line); color: var(--muted); }
+html[data-tema] .filtros button.on { background: linear-gradient(135deg, var(--brand), var(--brand-2)); border-color: transparent; color: #fff; }
+html[data-tema] .sugerencias button { background: transparent; border-color: var(--line); color: var(--ink); }
+html[data-tema] .sugerencias button:hover { border-color: var(--brand); color: var(--brand); }
+
+/* Campos */
+html[data-tema] select, html[data-tema] input, html[data-tema] textarea, html[data-tema] .chip {
+  background: var(--input-bg); color: var(--ink); border-color: var(--line);
+}
+html[data-tema] input:focus, html[data-tema] textarea:focus, html[data-tema] select:focus {
+  background: var(--input-bg); border-color: var(--brand); box-shadow: 0 0 0 4px var(--ring); outline: none;
+}
+html[data-tema] .chip b { color: var(--ink); }
+
+/* Tablas, textos y mensajes */
+html[data-tema] th, html[data-tema] .md th { color: var(--muted); }
+html[data-tema] .md th { background: var(--pista); }
+html[data-tema] td, html[data-tema] .md td, html[data-tema] .li { border-color: var(--line); }
+html[data-tema] .md code, html[data-tema] .tag, html[data-tema] .kv div { background: var(--pista); }
+html[data-tema] .msg.ia { background: var(--pista); }
+html[data-tema] .msg.yo { background: linear-gradient(135deg, var(--brand), var(--brand-2)); }
+html[data-tema] .badge.b-gris { background: var(--pista); color: var(--muted); }
+html[data-tema] .seccion::after { background: linear-gradient(90deg, var(--line), transparent); }
+
+/* ---------- Gráficas: barras en gradiente según magnitud ---------- */
+html[data-tema] .bar, html[data-tema] .hfill { background: linear-gradient(180deg, var(--mag-media-1), var(--mag-media-2)); }
+html[data-tema] .hfill { background: linear-gradient(90deg, var(--mag-media-2), var(--mag-media-1)); }
+html[data-tema] .htrack { background: var(--pista); }
+html[data-tema] .bars { border-color: var(--line); }
+html[data-tema] .bar.mag-baja  { background: linear-gradient(180deg, var(--mag-baja-1),  var(--mag-baja-2)); }
+html[data-tema] .bar.mag-media { background: linear-gradient(180deg, var(--mag-media-1), var(--mag-media-2)); }
+html[data-tema] .bar.mag-alta  { background: linear-gradient(180deg, var(--mag-alta-1),  var(--mag-alta-2)); }
+html[data-tema] .hfill.mag-baja  { background: linear-gradient(90deg, var(--mag-baja-2),  var(--mag-baja-1)); }
+html[data-tema] .hfill.mag-media { background: linear-gradient(90deg, var(--mag-media-2), var(--mag-media-1)); }
+html[data-tema] .hfill.mag-alta  { background: linear-gradient(90deg, var(--mag-alta-2),  var(--mag-alta-1)); }
+html[data-tema] .bar { box-shadow: 0 6px 16px -10px var(--mag-media-2); }
+html[data-tema] .bar.actual { outline: 2px solid var(--ink); outline-offset: 2px; }
+html[data-tema] .hrow.actual .htrack { outline: 1.5px solid var(--ink); outline-offset: 2px; }
+html[data-tema] .hrow.actual .nombre { color: var(--ink); }
+
+.leyenda-mag { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); margin-top: 12px; }
+.leyenda-mag span { display: inline-flex; align-items: center; gap: 6px; }
+.leyenda-mag i { width: 18px; height: 8px; border-radius: 3px; display: inline-block; }
+.leyenda-mag .l-baja  { background: linear-gradient(90deg, var(--mag-baja-2),  var(--mag-baja-1)); }
+.leyenda-mag .l-media { background: linear-gradient(90deg, var(--mag-media-2), var(--mag-media-1)); }
+.leyenda-mag .l-alta  { background: linear-gradient(90deg, var(--mag-alta-2),  var(--mag-alta-1)); }
+
+/* ---------- Login ---------- */
+html[data-tema] .login .brand { background: linear-gradient(150deg, var(--brand), var(--brand-2)); }
+html[data-tema] .login .form-side h2 { color: var(--ink); }
+
+/* ---------- Panel de configuración visual ---------- */
+.config-visual { position: relative; }
+.config-visual > button {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px;
+  border: 1px dashed var(--line); background: transparent; color: var(--side-muted, var(--muted));
+  font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer; text-align: left; white-space: nowrap;
+}
+.config-visual > button:hover { background: var(--side-hover, rgba(0,0,0,.05)); color: var(--side-ink, var(--ink)); }
+.config-visual > button svg { width: 18px; height: 18px; flex-shrink: 0; }
+.config-visual .muestra-actual { margin-left: auto; width: 26px; height: 12px; border-radius: 6px; }
+.config-pop {
+  position: absolute; bottom: calc(100% + 10px); left: 0; width: 280px; z-index: 50;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 16px;
+  padding: 16px; box-shadow: 0 24px 50px -20px rgba(0, 0, 0, .55);
+}
+.config-pop h4 { font-size: 14px; margin: 0 0 2px; }
+.config-pop p { font-size: 12px; color: var(--muted); margin: 0 0 12px; }
+.temas { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.temas button {
+  border: 2px solid var(--line); border-radius: 12px; padding: 8px; background: transparent; color: var(--ink);
+  font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; text-align: left;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.temas button:hover { border-color: var(--muted); }
+.temas button.on { border-color: var(--brand); }
+.temas .vista { height: 40px; border-radius: 8px; display: grid; grid-template-columns: 26% 1fr; overflow: hidden; }
+.temas .vista span:last-child { display: flex; align-items: flex-end; gap: 3px; padding: 6px; }
+.temas .vista i { flex: 1; border-radius: 2px 2px 0 0; display: block; }
+.config-flotante { position: fixed; left: 16px; bottom: 16px; z-index: 40; width: 220px; }
+.config-flotante > button { background: var(--panel); border-style: solid; box-shadow: var(--sombra); color: var(--ink); }
+@media (max-width: 760px) {
+  .sidebar .config-visual { position: static; }
+  .sidebar .config-visual > button span.txt, .sidebar .config-visual .muestra-actual { display: none; }
+  .sidebar .config-visual > button { width: auto; padding: 8px; border: none; }
+  .sidebar .config-pop { position: fixed; left: 16px; right: 16px; width: auto; top: 70px; bottom: auto; }
+  .config-flotante { width: auto; }
+  .config-flotante > button span.txt { display: none; }
+}
+
+/* Elementos que usaban colores fijos */
+html[data-tema] .toast { background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--sombra); }
+html[data-tema] .toast.error { background: var(--crit); color: #fff; border-color: transparent; }
+html[data-tema] .tooltip { background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); }
+html[data-tema] .avatar { color: #1d1b19; }
+html[data-tema] .modal-fondo { background: rgba(5, 6, 20, .55); }
+
+html[data-tema] .login .brand .logo-mark { background: rgba(255, 255, 255, .22); }
+html[data-tema] td.wrap { min-width: 230px; }
