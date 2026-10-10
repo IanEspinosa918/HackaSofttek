@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tienda Inteligente · Panel de inventario</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f4f1ec;
+      --panel: #ffffff;
+      --ink: #1d1b19;
+      --muted: #6f6a64;
+      --line: #e9e4dc;
+      --brand: #1f5c4a;
+      --brand-dark: #164537;
+      --brand-soft: #e6efeb;
+      --accent: #e8a33d;
+      /* estados (siempre con texto/ícono, nunca solo color) */
+      --crit: #b42318;  --crit-bg: #fdecea;
+      --warn: #a15c07;  --warn-bg: #fdf3e2;
+      --ok:   #1e7a46;  --ok-bg:   #e5f4ea;
+      --info: #2b5c8a;  --info-bg: #e7eff7;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+      background: var(--bg); color: var(--ink);
+      display: grid; grid-template-columns: 232px 1fr; min-height: 100vh;
+    }
+    button { font: inherit; cursor: pointer; }
+
+    /* ---------- Sidebar ---------- */
+    .sidebar {
+      background: var(--brand); color: #f4f1ec;
+      padding: 24px 16px; display: flex; flex-direction: column; gap: 28px;
+      position: sticky; top: 0; height: 100vh;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; padding: 0 8px; }
+    .logo-mark { width: 34px; height: 34px; border-radius: 9px; background: var(--accent); display: grid; place-items: center; }
+    .logo-mark svg { width: 19px; height: 19px; }
+    .nav { display: flex; flex-direction: column; gap: 4px; }
+    .nav a {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; border-radius: 10px;
+      color: rgba(244,241,236,.78); text-decoration: none; font-size: 14px; font-weight: 500;
+    }
+    .nav a svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .nav a:hover { background: rgba(244,241,236,.08); color: #fff; }
+    .nav a.active { background: rgba(244,241,236,.14); color: #fff; font-weight: 600; }
+    .user {
+      margin-top: auto; display: flex; align-items: center; gap: 10px;
+      padding: 12px; border-radius: 12px; background: rgba(244,241,236,.08); font-size: 13px;
+    }
+    .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--ink); display: grid; place-items: center; font-weight: 700; }
+    .user small { display: block; color: rgba(244,241,236,.65); font-size: 11.5px; }
+
+    /* ---------- Main ---------- */
+    main { padding: 28px 32px 48px; min-width: 0; }
+    .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+    .topbar h1 { font-size: 24px; }
+    .topbar p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    .top-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    select {
+      font: inherit; font-size: 14px; padding: 9px 12px; border-radius: 10px;
+      border: 1.5px solid var(--line); background: var(--panel); color: var(--ink);
+    }
+    .weather {
+      display: flex; align-items: center; gap: 10px; background: var(--panel);
+      border: 1.5px solid var(--line); border-radius: 10px; padding: 7px 12px; font-size: 13px;
+    }
+    .weather b { font-size: 16px; }
+    .weather small { color: var(--muted); display: block; font-size: 11.5px; }
+
+    .btn {
+      border: none; border-radius: 10px; padding: 10px 16px; font-size: 14px; font-weight: 600;
+      background: var(--brand); color: #fff; display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn:hover { background: var(--brand-dark); }
+    .btn.ghost { background: var(--brand-soft); color: var(--brand); }
+    .btn.ghost:hover { background: #d7e6df; }
+    .btn.sm { padding: 6px 10px; font-size: 12.5px; border-radius: 8px; }
+    .btn svg { width: 16px; height: 16px; }
+
+    /* KPIs */
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+    .kpi { background: var(--panel); border-radius: var(--radius); padding: 18px 20px; }
+    .kpi .label { font-size: 13px; color: var(--muted); font-weight: 500; }
+    .kpi .value { font-size: 28px; font-weight: 700; margin: 6px 0 4px; letter-spacing: -.5px; }
+    .kpi .delta { font-size: 12.5px; font-weight: 600; }
+    .delta.up-bad { color: var(--crit); }
+    .delta.down-good { color: var(--ok); }
+    .delta.neutral { color: var(--muted); }
+
+    /* Grid de paneles */
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+    .card { background: var(--panel); border-radius: var(--radius); padding: 20px; min-width: 0; }
+    .span-8 { grid-column: span 8; } .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; } .span-12 { grid-column: span 12; }
+    .card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .card-head h2 { font-size: 16px; }
+    .card-head p { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+    /* Tablas */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 0 10px 10px; white-space: nowrap; }
+    td { padding: 11px 10px; border-top: 1px solid var(--line); white-space: nowrap; }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .prod b { display: block; font-weight: 600; }
+    .prod small { color: var(--muted); font-size: 12px; }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 999px;
+    }
+    .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .b-crit { background: var(--crit-bg); color: var(--crit); }
+    .b-warn { background: var(--warn-bg); color: var(--warn); }
+    .b-ok   { background: var(--ok-bg);   color: var(--ok); }
+    .b-info { background: var(--info-bg); color: var(--info); }
+
+    /* Gráficas de barras (HTML puro) */
+    .chart { position: relative; }
+    .bars { display: flex; align-items: flex-end; gap: 10px; height: 180px; padding-bottom: 0; border-bottom: 1px solid var(--line); }
+    .bar-col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; cursor: default; }
+    .bar { width: 100%; max-width: 38px; background: var(--brand); border-radius: 4px 4px 0 0; transition: opacity .15s; }
+    .bar.current { background: var(--accent); }
+    .bars:hover .bar { opacity: .45; }
+    .bars .bar-col:hover .bar { opacity: 1; }
+    .x-labels { display: flex; gap: 10px; margin-top: 8px; }
+    .x-labels span { flex: 1; text-align: center; font-size: 11.5px; color: var(--muted); }
+    .tooltip {
+      position: absolute; pointer-events: none; background: var(--ink); color: #fff;
+      font-size: 12px; padding: 6px 10px; border-radius: 8px; white-space: nowrap;
+      transform: translate(-50%, -110%); opacity: 0; transition: opacity .1s;
+    }
+    .tooltip.show { opacity: 1; }
+
+    .hbars { display: flex; flex-direction: column; gap: 12px; }
+    .hrow { display: grid; grid-template-columns: 110px 1fr 64px; align-items: center; gap: 10px; font-size: 13px; }
+    .htrack { height: 12px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+    .hfill { height: 100%; background: var(--brand); border-radius: 0 4px 4px 0; }
+    .hrow .num { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    /* Lista de sobreinventario */
+    .list { display: flex; flex-direction: column; }
+    .li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 11px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
+    .li:first-child { border-top: none; padding-top: 0; }
+    .li small { display: block; color: var(--muted); font-size: 12px; }
+    .meter { width: 70px; height: 6px; background: var(--bg); border-radius: 4px; overflow: hidden; margin-top: 6px; margin-left: auto; }
+    .meter span { display: block; height: 100%; background: var(--crit); border-radius: 4px; }
+
+    /* Panel IA */
+    .ai {
+      background: linear-gradient(135deg, #1f5c4a 0%, #2a7560 100%); color: #f4f1ec;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    .ai .card-head h2 { color: #fff; }
+    .ai .card-head p { color: rgba(244,241,236,.7); }
+    .ai-box {
+      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+      border-radius: 12px; padding: 14px; font-size: 13.5px; line-height: 1.6; min-height: 140px;
+    }
+    .ai-box ul { padding-left: 18px; }
+    .ai-box .placeholder { color: rgba(244,241,236,.6); }
+    .ai .btn { background: var(--accent); color: var(--ink); }
+    .ai .btn:hover { background: #f0b55a; }
+    .ai .btn.ghost { background: rgba(255,255,255,.12); color: #fff; }
+    .ai-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--ink); color: #fff; padding: 12px 18px; border-radius: 12px; font-size: 14px;
+      opacity: 0; transition: all .2s; pointer-events: none; z-index: 10;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 1100px) {
+      .kpis { grid-template-columns: repeat(2, 1fr); }
+      .span-8, .span-4, .span-6 { grid-column: span 12; }
+    }
+    @media (max-width: 760px) {
+      body { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; flex-direction: row; align-items: center; padding: 12px 16px; overflow-x: auto; gap: 16px; }
+      .nav { flex-direction: row; }
+      .nav a span, .user { display: none; }
+      main { padding: 20px 16px 40px; }
+      .kpis { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .kpi .value { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== Sidebar ===== -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1d1b19" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0V9z"/><path d="M5 13v7h14v-7"/></svg>
+      </div>
+      <span>Tienda Inteligente</span>
+    </div>
+    <nav class="nav">
+      <a href="#" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><span>Panel</span></a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg><span>Inventario</span></a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h11"/><path d="M9 12h11"/><path d="M9 19h11"/><path d="M4 5h.01M4 12h.01M4 19h.01"/></svg><span>Pedidos</span></a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg><span>Entregas</span></a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg><span>Mermas</span></a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg><span>Reportes</span></a>
+    </nav>
+    <div class="user">
+      <div class="avatar" id="avatar">OP</div>
+      <div><span id="nombreUsuario">Operador</span><small>Operador de inventario</small></div>
+    </div>
+  </aside>
+
+  <!-- ===== Contenido ===== -->
+  <main>
+    <header class="topbar">
+      <div>
+        <h1>Panel de inventario</h1>
+        <p id="fechaHoy">—</p>
+      </div>
+      <div class="top-actions">
+        <select id="sucursal" aria-label="Sucursal"></select>
+        <div class="weather" id="clima">
+          <span id="climaIcono">☀️</span>
+          <div><b id="climaTemp">--°</b><small id="climaDesc">Cargando clima…</small></div>
+        </div>
+      </div>
+    </header>
+
+    <!-- KPIs -->
+    <section class="kpis" id="kpis"></section>
+
+    <section class="grid">
+      <!-- Alertas de caducidad -->
+      <article class="card span-8">
+        <div class="card-head">
+          <div>
+            <h2>Productos por caducar</h2>
+            <p>Descuento sugerido según días restantes e inventario</p>
+          </div>
+          <button class="btn ghost sm">Ver todos</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Producto</th><th>Lote</th><th class="num">Existencia</th><th>Caduca</th><th class="num">Desc. sugerido</th><th></th></tr></thead>
+            <tbody id="tablaCaducidad"></tbody>
+          </table>
+        </div>
+      </article>
+
+      <!-- Reporte IA -->
+      <article class="card span-4 ai">
+        <div class="card-head">
+          <div>
+            <h2>Reporte con IA</h2>
+            <p>Resumen del día generado por Gemini</p>
+          </div>
+        </div>
+        <div class="ai-box" id="aiBox">
+          <p class="placeholder">Presiona "Generar reporte" para obtener un resumen de riesgos de merma, sobreinventario y entregas, con recomendaciones para hoy.</p>
+        </div>
+        <div class="ai-actions">
+          <button class="btn" id="btnGenerar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z"/></svg>
+            Generar reporte
+          </button>
+          <button class="btn ghost" id="btnEnviar" disabled style="opacity:.5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
+            Enviar al gerente
+          </button>
+        </div>
+      </article>
+
+      <!-- Entregas -->
+      <article class="card span-8">
+        <div class="card-head">
+          <div>
+            <h2>Pedidos y entregas</h2>
+            <p>Llegada estimada = ruta + retraso histórico del proveedor + clima</p>
+          </div>
+          <button class="btn sm">+ Nuevo pedido</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Pedido</th><th>Proveedor</th><th>Prometida</th><th>Estimada</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="tablaEntregas"></tbody>
+          </table>
+        </div>
+      </article>
+
+      <!-- Sobreinventario -->
+      <article class="card span-4">
+        <div class="card-head">
+          <div>
+            <h2>Sobreinventario</h2>
+            <p>Cobertura mayor a la vida útil restante</p>
+          </div>
+        </div>
+        <div class="list" id="listaSobre"></div>
+      </article>
+
+      <!-- Merma semanal -->
+      <article class="card span-6">
+        <div class="card-head">
+          <div>
+            <h2>Merma por semana</h2>
+            <p>Valor en pesos · últimas 8 semanas</p>
+          </div>
+        </div>
+        <div class="chart" id="chartSemanal">
+          <div class="bars" id="bars"></div>
+          <div class="x-labels" id="xLabels"></div>
+          <div class="tooltip" id="tooltip"></div>
+        </div>
+      </article>
+
+      <!-- Merma por causa -->
+      <article class="card span-6">
+        <div class="card-head">
+          <div>
+            <h2>Merma por causa</h2>
+            <p>Valor en pesos · este mes</p>
+          </div>
+        </div>
+        <div class="hbars" id="hbars"></div>
+      </article>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    /*
+     * =====================================================
+     *  DATOS DE PRUEBA
+     * =====================================================
+     * Cuando el backend (Python) esté listo, reemplaza este objeto por:
+     *
+     *   const res = await fetch(`/api/dashboard?sucursal=${idSucursal}`);
+     *   const DATOS = await res.json();
+     *
+     * El backend debe regresar la misma estructura que este objeto.
+     */
+    const DATOS = {
+      usuario: { nombre: 'Ian Espinosa', iniciales: 'IE' },
+      sucursales: [
+        { id: 1, nombre: 'Sucursal Centro', lat: 19.4326, lon: -99.1332 },
+        { id: 2, nombre: 'Sucursal Norte',  lat: 19.5045, lon: -99.1470 },
+        { id: 3, nombre: 'Sucursal Sur',    lat: 19.3133, lon: -99.1557 }
+      ],
+      kpis: [
+        { label: 'Valor en riesgo de merma', value: '$8,420', delta: '+12% vs semana pasada', tipo: 'up-bad' },
+        { label: 'Productos por caducar (≤7 días)', value: '23', delta: '6 caducan en 48 h', tipo: 'up-bad' },
+        { label: 'Productos con sobreinventario', value: '9', delta: '−3 vs semana pasada', tipo: 'down-good' },
+        { label: 'Entregas en camino', value: '4', delta: '1 con retraso', tipo: 'neutral' }
+      ],
+      caducidad: [
+        { producto: 'Yogurt natural 1 L',   cat: 'Lácteos',    lote: 'L-2291', existencia: 64, dias: 1, desc: 50 },
+        { producto: 'Pan de caja integral', cat: 'Panadería',  lote: 'P-0874', existencia: 38, dias: 2, desc: 30 },
+        { producto: 'Pechuga de pollo kg',  cat: 'Carnes',     lote: 'C-1120', existencia: 22, dias: 3, desc: 30 },
+        { producto: 'Leche entera 1 L',     cat: 'Lácteos',    lote: 'L-2305', existencia: 120, dias: 5, desc: 15 },
+        { producto: 'Queso panela 400 g',   cat: 'Lácteos',    lote: 'L-2288', existencia: 31, dias: 6, desc: 10 }
+      ],
+      entregas: [
+        { pedido: 'PED-1043', proveedor: 'Lácteos del Valle', prometida: 'Hoy 10:00',   estimada: 'Hoy 13:30',    estado: 'retraso' },
+        { pedido: 'PED-1044', proveedor: 'Panificadora Sol',  prometida: 'Hoy 16:00',   estimada: 'Hoy 16:10',    estado: 'camino' },
+        { pedido: 'PED-1045', proveedor: 'Cárnicos MX',       prometida: 'Mañana 08:00',estimada: 'Mañana 08:45', estado: 'camino' },
+        { pedido: 'PED-1041', proveedor: 'Frutas Express',    prometida: 'Ayer 09:00',  estimada: 'Llegó 09:20',  estado: 'recibido' }
+      ],
+      sobreinventario: [
+        { producto: 'Yogurt natural 1 L',   cobertura: 9,  vida: 1 },
+        { producto: 'Crema ácida 200 ml',   cobertura: 14, vida: 8 },
+        { producto: 'Tortilla de harina',   cobertura: 11, vida: 6 },
+        { producto: 'Jugo de naranja 1 L',  cobertura: 18, vida: 12 }
+      ],
+      mermaSemanal: [
+        { semana: 'S33', valor: 6200 }, { semana: 'S34', valor: 5800 },
+        { semana: 'S35', valor: 7100 }, { semana: 'S36', valor: 6600 },
+        { semana: 'S37', valor: 5400 }, { semana: 'S38', valor: 6900 },
+        { semana: 'S39', valor: 7500 }, { semana: 'S40', valor: 8420 }
+      ],
+      mermaCausa: [
+        { causa: 'Caducidad',  valor: 14200 },
+        { causa: 'Daño',       valor: 5100 },
+        { causa: 'Proveedor',  valor: 3800 },
+        { causa: 'Robo',       valor: 1900 },
+        { causa: 'Otro',       valor: 900 }
+      ]
+    };
+
+    const $ = id => document.getElementById(id);
+    const pesos = n => '$' + n.toLocaleString('es-MX');
+
+    // ---------- Encabezado ----------
+    $('fechaHoy').textContent = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    $('nombreUsuario').textContent = DATOS.usuario.nombre;
+    $('avatar').textContent = DATOS.usuario.iniciales;
+    $('sucursal').innerHTML = DATOS.sucursales.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('');
+
+    // ---------- KPIs ----------
+    $('kpis').innerHTML = DATOS.kpis.map(k => `
+      <div class="kpi">
+        <div class="label">${k.label}</div>
+        <div class="value">${k.value}</div>
+        <div class="delta ${k.tipo}">${k.delta}</div>
+      </div>`).join('');
+
+    // ---------- Caducidad ----------
+    const badgeDias = d => d <= 2 ? `<span class="badge b-crit">${d} día${d > 1 ? 's' : ''}</span>`
+                         : d <= 4 ? `<span class="badge b-warn">${d} días</span>`
+                         : `<span class="badge b-info">${d} días</span>`;
+    $('tablaCaducidad').innerHTML = DATOS.caducidad.map(p => `
+      <tr>
+        <td class="prod"><b>${p.producto}</b><small>${p.cat}</small></td>
+        <td>${p.lote}</td>
+        <td class="num">${p.existencia}</td>
+        <td>${badgeDias(p.dias)}</td>
+        <td class="num"><b>${p.desc}%</b></td>
+        <td><button class="btn sm ghost" onclick="toast('Descuento de ${p.desc}% aplicado a ${p.producto}')">Aplicar</button></td>
+      </tr>`).join('');
+
+    // ---------- Entregas ----------
+    const ESTADOS = {
+      retraso:  '<span class="badge b-crit">Con retraso</span>',
+      camino:   '<span class="badge b-info">En camino</span>',
+      recibido: '<span class="badge b-ok">Recibido</span>'
+    };
+    $('tablaEntregas').innerHTML = DATOS.entregas.map(e => `
+      <tr>
+        <td><b>${e.pedido}</b></td>
+        <td>${e.proveedor}</td>
+        <td>${e.prometida}</td>
+        <td>${e.estimada}</td>
+        <td>${ESTADOS[e.estado]}</td>
+        <td>${e.estado !== 'recibido'
+              ? `<button class="btn sm ghost" onclick="toast('Llegada de ${e.pedido} registrada')">Marcar llegada</button>`
+              : ''}</td>
+      </tr>`).join('');
+
+    // ---------- Sobreinventario ----------
+    $('listaSobre').innerHTML = DATOS.sobreinventario.map(s => {
+      const exceso = Math.min(100, Math.round((s.cobertura - s.vida) / s.cobertura * 100));
+      return `
+        <div class="li">
+          <div><b>${s.producto}</b><small>Cobertura ${s.cobertura} días · vida útil ${s.vida} días</small></div>
+          <div style="text-align:right">
+            <span class="badge b-warn">+${s.cobertura - s.vida} días</span>
+            <div class="meter"><span style="width:${exceso}%"></span></div>
+          </div>
+        </div>`;
+    }).join('');
+
+    // ---------- Merma semanal (barras verticales) ----------
+    const maxSem = Math.max(...DATOS.mermaSemanal.map(d => d.valor));
+    $('bars').innerHTML = DATOS.mermaSemanal.map((d, i) => `
+      <div class="bar-col" data-i="${i}">
+        <div class="bar ${i === DATOS.mermaSemanal.length - 1 ? 'current' : ''}" style="height:${d.valor / maxSem * 100}%"></div>
+      </div>`).join('');
+    $('xLabels').innerHTML = DATOS.mermaSemanal.map(d => `<span>${d.semana}</span>`).join('');
+
+    const tip = $('tooltip');
+    $('bars').querySelectorAll('.bar-col').forEach(col => {
+      col.addEventListener('mouseenter', () => {
+        const d = DATOS.mermaSemanal[col.dataset.i];
+        const bar = col.querySelector('.bar');
+        const chartBox = $('chartSemanal').getBoundingClientRect();
+        const barBox = bar.getBoundingClientRect();
+        tip.innerHTML = `<b>${d.semana}</b> · ${pesos(d.valor)}`;
+        tip.style.left = (barBox.left - chartBox.left + barBox.width / 2) + 'px';
+        tip.style.top = (barBox.top - chartBox.top) + 'px';
+        tip.classList.add('show');
+      });
+      col.addEventListener('mouseleave', () => tip.classList.remove('show'));
+    });
+
+    // ---------- Merma por causa (barras horizontales) ----------
+    const maxCausa = Math.max(...DATOS.mermaCausa.map(d => d.valor));
+    $('hbars').innerHTML = DATOS.mermaCausa.map(d => `
+      <div class="hrow" title="${d.causa}: ${pesos(d.valor)}">
+        <span>${d.causa}</span>
+        <div class="htrack"><div class="hfill" style="width:${d.valor / maxCausa * 100}%"></div></div>
+        <span class="num">${pesos(d.valor)}</span>
+      </div>`).join('');
+
+    // ---------- Clima en tiempo real (Open-Meteo, gratis y sin API key) ----------
+    const ICONOS = { 0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️', 45: '🌫️', 48: '🌫️', 51: '🌦️', 61: '🌧️', 63: '🌧️', 65: '🌧️', 80: '🌦️', 81: '🌧️', 82: '⛈️', 95: '⛈️' };
+    const DESC = { 0: 'Despejado', 1: 'Mayormente despejado', 2: 'Parcialmente nublado', 3: 'Nublado', 45: 'Niebla', 48: 'Niebla', 51: 'Llovizna', 61: 'Lluvia ligera', 63: 'Lluvia', 65: 'Lluvia fuerte', 80: 'Chubascos', 81: 'Chubascos', 82: 'Tormenta', 95: 'Tormenta eléctrica' };
+
+    async function cargarClima() {
+      const suc = DATOS.sucursales.find(s => s.id == $('sucursal').value);
+      try {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${suc.lat}&longitude=${suc.lon}&current=temperature_2m,weather_code&timezone=auto`;
+        const r = await fetch(url);
+        const j = await r.json();
+        const code = j.current.weather_code;
+        $('climaTemp').textContent = Math.round(j.current.temperature_2m) + '°C';
+        $('climaIcono').textContent = ICONOS[code] || '🌡️';
+        $('climaDesc').textContent = DESC[code] || 'Clima actual';
+      } catch {
+        $('climaTemp').textContent = '--°';
+        $('climaDesc').textContent = 'Clima no disponible';
+      }
+    }
+    $('sucursal').addEventListener('change', () => {
+      cargarClima();
+      // Aquí también recargarías DATOS del backend para la nueva sucursal
+    });
+    cargarClima();
+
+    // ---------- Reporte con IA ----------
+    /*
+     * Conexión real:
+     *   const r = await fetch('/api/reporte', { method: 'POST', body: JSON.stringify({ sucursal }) });
+     *   const { html } = await r.json();   // el backend arma el prompt con los datos y llama a Gemini
+     */
+    $('btnGenerar').addEventListener('click', async () => {
+      const box = $('aiBox');
+      box.innerHTML = '<p class="placeholder">Analizando inventario, entregas y clima…</p>';
+      await new Promise(r => setTimeout(r, 1200)); // simulación
+      box.innerHTML = `
+        <p><b>Resumen de hoy</b></p>
+        <ul>
+          <li><b>Riesgo alto:</b> 64 yogurts caducan mañana y hay sobreinventario. Aplica 50% hoy y colócalos al frente.</li>
+          <li><b>Proveedor:</b> Lácteos del Valle viene con 3.5 h de retraso (su promedio es 1.5 h). Considera un proveedor alterno para la leche.</li>
+          <li><b>Clima:</b> se esperan temperaturas altas; revisa la cadena de frío y sube el pedido de bebidas.</li>
+          <li><b>Merma:</b> la caducidad es el 55% de la merma del mes. Reduce el pedido de crema ácida un 30%.</li>
+        </ul>`;
+      const env = $('btnEnviar');
+      env.disabled = false; env.style.opacity = 1;
+    });
+
+    $('btnEnviar').addEventListener('click', () => {
+      // Conexión real: fetch('/api/reporte/enviar', { method: 'POST', ... })
+      toast('Reporte enviado al gerente');
+    });
+
+    // ---------- Toast ----------
+    function toast(msg) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(t._t);
+      t._t = setTimeout(() => t.classList.remove('show'), 2200);
+    }
+  </script>
+</body>
+</html>

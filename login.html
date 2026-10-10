@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tienda Inteligente · Iniciar sesión</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f4f1ec;
+      --panel: #ffffff;
+      --ink: #1d1b19;
+      --muted: #6f6a64;
+      --line: #e3ddd4;
+      --brand: #1f5c4a;
+      --brand-dark: #164537;
+      --accent: #e8a33d;
+      --error-bg: #fdecea;
+      --error-ink: #a1281b;
+      --error-line: #f3c2bc;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+    }
+
+    .login {
+      width: 100%;
+      max-width: 920px;
+      background: var(--panel);
+      border-radius: 22px;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      box-shadow: 0 30px 60px -30px rgba(29, 27, 25, .35);
+    }
+
+    /* ---------- Panel izquierdo (marca) ---------- */
+    .brand {
+      background: var(--brand);
+      color: #f4f1ec;
+      padding: 48px 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+    .brand::after {
+      content: "";
+      position: absolute;
+      width: 320px; height: 320px;
+      border-radius: 50%;
+      border: 48px solid rgba(232, 163, 61, .18);
+      right: -120px; bottom: -120px;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 12px;
+      font-weight: 700; font-size: 18px;
+    }
+    .logo-mark {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: var(--accent);
+      display: grid; place-items: center;
+    }
+    .logo-mark svg { width: 22px; height: 22px; }
+    .brand h1 {
+      font-size: 32px; line-height: 1.15; font-weight: 700;
+      margin-bottom: 14px; position: relative; z-index: 1;
+    }
+    .brand p {
+      color: rgba(244, 241, 236, .75);
+      line-height: 1.6; max-width: 320px; position: relative; z-index: 1;
+    }
+    .pills { display: flex; gap: 8px; flex-wrap: wrap; position: relative; z-index: 1; }
+    .pill {
+      font-size: 12px; font-weight: 600;
+      padding: 6px 12px; border-radius: 999px;
+      background: rgba(244, 241, 236, .12);
+      border: 1px solid rgba(244, 241, 236, .2);
+    }
+
+    /* ---------- Formulario ---------- */
+    .form-side { padding: 56px 48px; }
+    .form-side h2 { font-size: 24px; margin-bottom: 6px; }
+    .form-side .sub { color: var(--muted); margin-bottom: 28px; font-size: 14px; }
+
+    .field { margin-bottom: 18px; }
+    .field label {
+      display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px;
+    }
+    .input-wrap { position: relative; }
+    .input-wrap svg {
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      width: 18px; height: 18px; color: var(--muted); pointer-events: none;
+    }
+    .field input {
+      width: 100%;
+      font: inherit; font-size: 15px;
+      padding: 13px 44px 13px 42px;
+      border: 1.5px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfaf8;
+      transition: border-color .15s, box-shadow .15s, background .15s;
+    }
+    .field input:focus {
+      outline: none;
+      border-color: var(--brand);
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(31, 92, 74, .12);
+    }
+    .field input.invalid {
+      border-color: var(--error-ink);
+      box-shadow: 0 0 0 4px rgba(161, 40, 27, .08);
+    }
+    .field-error {
+      font-size: 12.5px; color: var(--error-ink);
+      margin-top: 6px; min-height: 0;
+      display: none;
+    }
+    .field-error.show { display: block; }
+
+    .toggle-pass {
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); padding: 6px; border-radius: 8px;
+      display: grid; place-items: center;
+    }
+    .toggle-pass:hover { background: var(--bg); }
+    .toggle-pass svg { position: static; transform: none; }
+
+    .row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin: 4px 0 24px; font-size: 13px;
+    }
+    .row label { display: flex; align-items: center; gap: 8px; color: var(--muted); cursor: pointer; }
+    .row input { accent-color: var(--brand); width: 16px; height: 16px; }
+    .row a { color: var(--brand); font-weight: 600; text-decoration: none; }
+    .row a:hover { text-decoration: underline; }
+
+    /* Mensaje general de error */
+    .alert {
+      display: none;
+      align-items: flex-start; gap: 10px;
+      background: var(--error-bg);
+      border: 1px solid var(--error-line);
+      color: var(--error-ink);
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 14px; font-weight: 500;
+      margin-bottom: 20px;
+      animation: shake .35s ease;
+    }
+    .alert.show { display: flex; }
+    .alert svg { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+
+    .btn {
+      width: 100%;
+      font: inherit; font-size: 15px; font-weight: 600;
+      padding: 14px;
+      border: none; border-radius: var(--radius);
+      background: var(--brand); color: #fff;
+      cursor: pointer;
+      display: flex; justify-content: center; align-items: center; gap: 10px;
+      transition: background .15s, transform .05s;
+    }
+    .btn:hover { background: var(--brand-dark); }
+    .btn:active { transform: scale(.99); }
+    .btn:disabled { opacity: .7; cursor: wait; }
+    .spinner {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.4); border-top-color: #fff;
+      animation: spin .7s linear infinite; display: none;
+    }
+    .btn.loading .spinner { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .foot { margin-top: 28px; text-align: center; font-size: 12.5px; color: var(--muted); }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 760px) {
+      .login { grid-template-columns: 1fr; }
+      .brand { padding: 28px 24px; gap: 24px; }
+      .brand h1 { font-size: 24px; }
+      .brand .pills { display: none; }
+      .form-side { padding: 32px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+  <main class="login">
+    <!-- Panel de marca -->
+    <section class="brand">
+      <div class="logo">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#1d1b19" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l1.5-5h15L21 9"/><path d="M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0V9z"/><path d="M5 13v7h14v-7"/>
+          </svg>
+        </div>
+        Tienda Inteligente
+      </div>
+      <div>
+        <h1>Decisiones con datos para cada sucursal.</h1>
+        <p>Recomendaciones de promociones, inventario y personal en un solo lugar.</p>
+      </div>
+      <div class="pills">
+        <span class="pill">Promociones</span>
+        <span class="pill">Inventario</span>
+        <span class="pill">Personal</span>
+      </div>
+    </section>
+
+    <!-- Formulario -->
+    <section class="form-side">
+      <h2>Iniciar sesión</h2>
+      <p class="sub">Ingresa con tu usuario de sucursal.</p>
+
+      <!-- Mensaje general (usuario no encontrado / contraseña incorrecta / ambos) -->
+      <div class="alert" id="alerta" role="alert" aria-live="assertive">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+        </svg>
+        <span id="alertaTexto"></span>
+      </div>
+
+      <!--
+        CONEXIÓN A BD: cambia action/method al endpoint de tu backend
+        (ej. login.php, /api/login, etc.). Por ahora el envío lo maneja JS.
+      -->
+      <form id="formLogin" action="#" method="POST" novalidate>
+        <div class="field">
+          <label for="usuario">Usuario</label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>
+            </svg>
+            <input type="text" id="usuario" name="usuario" placeholder="Ej. jperez" autocomplete="username">
+          </div>
+          <div class="field-error" id="errUsuario">Usuario no encontrado</div>
+        </div>
+
+        <div class="field">
+          <label for="contrasena">Contraseña</label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+            </svg>
+            <input type="password" id="contrasena" name="contrasena" placeholder="••••••••" autocomplete="current-password">
+            <button type="button" class="toggle-pass" id="togglePass" aria-label="Mostrar contraseña">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+          <div class="field-error" id="errContrasena">Contraseña incorrecta</div>
+        </div>
+
+        <div class="row">
+          <label><input type="checkbox" name="recordar"> Recordarme</label>
+          <a href="#">¿Olvidaste tu contraseña?</a>
+        </div>
+
+        <button type="submit" class="btn" id="btnEntrar">
+          <span class="spinner"></span>
+          <span>Entrar</span>
+        </button>
+      </form>
+
+      <p class="foot">© 2026 Tienda Inteligente para Retail</p>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById('formLogin');
+    const inpUsuario = document.getElementById('usuario');
+    const inpContrasena = document.getElementById('contrasena');
+    const alerta = document.getElementById('alerta');
+    const alertaTexto = document.getElementById('alertaTexto');
+    const errUsuario = document.getElementById('errUsuario');
+    const errContrasena = document.getElementById('errContrasena');
+    const btn = document.getElementById('btnEntrar');
+
+    // Mensajes según la respuesta del backend
+    const MENSAJES = {
+      USUARIO_NO_ENCONTRADO: 'Usuario no encontrado',
+      CONTRASENA_INCORRECTA: 'Contraseña incorrecta',
+      AMBOS_INCORRECTOS:     'Usuario y contraseña incorrectos',
+      CAMPOS_VACIOS:         'Ingresa tu usuario y contraseña'
+    };
+
+    /*
+     * =====================================================
+     *  AQUÍ VA LA CONEXIÓN A LA BASE DE DATOS
+     * =====================================================
+     * Sustituye esta función por una llamada real a tu backend, por ejemplo:
+     *
+     *   const res = await fetch('/api/login', {
+     *     method: 'POST',
+     *     headers: { 'Content-Type': 'application/json' },
+     *     body: JSON.stringify({ usuario, contrasena })
+     *   });
+     *   return await res.json();   // { ok: true } o { ok: false, codigo: 'CONTRASENA_INCORRECTA' }
+     *
+     * Debe regresar:
+     *   { ok: true }                                  -> login correcto
+     *   { ok: false, codigo: 'USUARIO_NO_ENCONTRADO' }
+     *   { ok: false, codigo: 'CONTRASENA_INCORRECTA' }
+     *   { ok: false, codigo: 'AMBOS_INCORRECTOS' }
+     *
+     * Por ahora es una simulación para probar el diseño:
+     *   - usuario "admin" + contraseña "1234"  -> entra
+     *   - usuario "admin" + otra contraseña    -> Contraseña incorrecta
+     *   - otro usuario + contraseña "1234"     -> Usuario no encontrado
+     *   - otro usuario + otra contraseña       -> Usuario y contraseña incorrectos
+     */
+    async function validarCredenciales(usuario, contrasena) {
+      await new Promise(r => setTimeout(r, 700)); // simula espera del servidor
+      const usuarioOk = usuario === 'admin';
+      const contrasenaOk = contrasena === '1234';
+      if (usuarioOk && contrasenaOk) return { ok: true };
+      if (!usuarioOk && !contrasenaOk) return { ok: false, codigo: 'AMBOS_INCORRECTOS' };
+      if (!usuarioOk) return { ok: false, codigo: 'USUARIO_NO_ENCONTRADO' };
+      return { ok: false, codigo: 'CONTRASENA_INCORRECTA' };
+    }
+
+    function limpiarErrores() {
+      alerta.classList.remove('show');
+      [inpUsuario, inpContrasena].forEach(i => i.classList.remove('invalid'));
+      [errUsuario, errContrasena].forEach(e => e.classList.remove('show'));
+    }
+
+    function mostrarError(codigo) {
+      // reinicia la animación
+      alerta.classList.remove('show');
+      void alerta.offsetWidth;
+      alertaTexto.textContent = MENSAJES[codigo];
+      alerta.classList.add('show');
+
+      if (codigo === 'USUARIO_NO_ENCONTRADO' || codigo === 'AMBOS_INCORRECTOS') {
+        inpUsuario.classList.add('invalid');
+      }
+      if (codigo === 'CONTRASENA_INCORRECTA' || codigo === 'AMBOS_INCORRECTOS') {
+        inpContrasena.classList.add('invalid');
+      }
+      // Mensajes bajo cada campo solo en errores individuales
+      if (codigo === 'USUARIO_NO_ENCONTRADO') errUsuario.classList.add('show');
+      if (codigo === 'CONTRASENA_INCORRECTA') errContrasena.classList.add('show');
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      limpiarErrores();
+
+      const usuario = inpUsuario.value.trim();
+      const contrasena = inpContrasena.value;
+
+      if (!usuario || !contrasena) {
+        alertaTexto.textContent = MENSAJES.CAMPOS_VACIOS;
+        alerta.classList.add('show');
+        if (!usuario) inpUsuario.classList.add('invalid');
+        if (!contrasena) inpContrasena.classList.add('invalid');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.classList.add('loading');
+
+      try {
+        const res = await validarCredenciales(usuario, contrasena);
+        if (res.ok) {
+          // Login correcto: redirige a la página principal
+          window.location.href = 'dashboard.html';
+        } else {
+          mostrarError(res.codigo);
+        }
+      } catch (err) {
+        alertaTexto.textContent = 'No se pudo conectar con el servidor';
+        alerta.classList.add('show');
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('loading');
+      }
+    });
+
+    // Quita el error del campo en cuanto el usuario vuelve a escribir
+    [inpUsuario, inpContrasena].forEach(inp => {
+      inp.addEventListener('input', () => {
+        inp.classList.remove('invalid');
+        (inp === inpUsuario ? errUsuario : errContrasena).classList.remove('show');
+      });
+    });
+
+    // Mostrar / ocultar contraseña
+    document.getElementById('togglePass').addEventListener('click', () => {
+      inpContrasena.type = inpContrasena.type === 'password' ? 'text' : 'password';
+    });
+  </script>
+</body>
+</html>
