@@ -4,7 +4,7 @@ main.py - API del proyecto (FastAPI).
 Arrancar:   uvicorn main:app --reload
 Documentación interactiva para probar cada endpoint:  http://localhost:8000/docs
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -48,9 +48,15 @@ class ChatEntrada(BaseModel):
     nombre_usuario: str | None = None
 
 
+class ConsultaEntrada(BaseModel):
+    idsucursal: int
+    idtrabajador: int | None = None
+    forzar: bool = False          # True = volver a generar aunque haya una respuesta reciente guardada
+
+
 class ReporteEntrada(BaseModel):
     idsucursal: int
-    idtrabajador: int
+    idtrabajador: int | None = None
 
 
 class RevisionEntrada(BaseModel):
@@ -72,14 +78,14 @@ class MermaEntrada(BaseModel):
     idlote: int
     idcausa: int
     cantidad: int = Field(gt=0)
-    idtrabajador: int
+    idtrabajador: int | None = None
     observaciones: str | None = None
 
 
 class PromocionEntrada(BaseModel):
     idlote: int
     porcentaje: float = Field(gt=0, le=100)
-    idtrabajador: int
+    idtrabajador: int | None = None
     dias_vigencia: int | None = None
     motivo: str = "caducidad"
     origen: str = "sistema"
@@ -93,7 +99,7 @@ class DetallePedidoEntrada(BaseModel):
 class PedidoEntrada(BaseModel):
     idproveedor: int
     idsucursal: int
-    idtrabajador: int
+    idtrabajador: int | None = None
     productos: list[DetallePedidoEntrada]
 
 
@@ -108,7 +114,13 @@ def salud():
         bd = "conectada"
     except Exception as e:
         bd = f"error: {e}"
-    return {"api": "ok", "base_de_datos": bd, "modelo_ia": ia.MODELO}
+    fecha = None
+    if bd == "conectada":
+        try:
+            fecha = logica.fecha_referencia().isoformat()
+        except Exception:
+            pass
+    return {"api": "ok", "base_de_datos": bd, "fecha_referencia": fecha, "modelo_ia": ia.MODELO}
 
 
 @app.post("/api/login", tags=["General"])
@@ -118,7 +130,7 @@ def login(datos: LoginEntrada):
     con los mismos códigos que espera login.html.
     """
     filas = db.consultar("""
-        SELECT t.idtrabajador, t.nombre, t.apellido, t.idsucursal, s.nombre AS sucursal,
+        SELECT t.idtrabajador, t.nombre, t.apellido, t.idsucursal, RTRIM(s.nombre) AS sucursal,
                p.rol_sistema, t.contrasena_hash
         FROM trabajador t
         JOIN puesto   p ON p.idpuesto   = t.idpuesto
@@ -154,6 +166,8 @@ def dashboard(idsucursal: int):
         "entregas": logica.entregas_pendientes(idsucursal),
         "merma_semanal": logica.merma_por_semana(idsucursal, 8),
         "merma_causa": logica.merma_por_causa(idsucursal, 30),
+        "merma_y_quiebres": logica.merma_y_quiebres(idsucursal, 30),
+        "fecha_referencia": logica.fecha_referencia().isoformat(),
     }
 
 
@@ -167,6 +181,17 @@ def sobre(idsucursal: int):
     return logica.sobreinventario(idsucursal)
 
 
+@app.get("/api/stock/{idsucursal}", tags=["Inventario"])
+def stock(idsucursal: int):
+    """Existencia por producto con venta diaria, cobertura, próxima caducidad y estado (agotado, bajo, exceso, ok)."""
+    return logica.stock_actual(idsucursal)
+
+
+@app.get("/api/causas-merma", tags=["Mermas"])
+def causas_merma():
+    return db.consultar("SELECT idcausa, nombre FROM causa_merma ORDER BY idcausa")
+
+
 @app.get("/api/transferencias", tags=["Inventario"])
 def transferencias():
     return logica.transferencias_sugeridas()
@@ -174,8 +199,12 @@ def transferencias():
 
 @app.post("/api/promociones", tags=["Inventario"])
 def crear_promocion(p: PromocionEntrada):
+    datos = p.model_dump()
+    if datos["idtrabajador"] is None:
+        lote = db.consultar("SELECT idsucursal FROM lote WHERE idlote = ?", (p.idlote,))
+        datos["idtrabajador"] = logica.trabajador_por_defecto(lote[0]["idsucursal"] if lote else 1)
     try:
-        return {"idpromocion": logica.aplicar_promocion(**p.model_dump())}
+        return {"idpromocion": logica.aplicar_promocion(**datos)}
     except ValueError as e:
         _error(e)
 
@@ -193,17 +222,34 @@ def pedidos_sugeridos(idsucursal: int):
     return logica.sugerir_pedidos(idsucursal)
 
 
+@app.get("/api/pedidos/{idsucursal}/historial", tags=["Pedidos"])
+def pedidos_historial(idsucursal: int, dias: int = 30):
+    """Pedidos recientes de la sucursal (todos los estados) con retraso y unidades recibidas."""
+    return logica.historial_pedidos(idsucursal, dias)
+
+
+@app.get("/api/pedido/{idpedido}", tags=["Pedidos"])
+def pedido_detalle(idpedido: int):
+    """Líneas de un pedido, para registrar su llegada producto por producto."""
+    try:
+        return logica.detalle_pedido(idpedido)
+    except ValueError as e:
+        _error(e, 404)
+
+
 @app.post("/api/pedidos", tags=["Pedidos"])
 def crear_pedido(p: PedidoEntrada):
     """Crea un pedido. La fecha prometida se calcula con los días que promete el proveedor."""
     prov = db.consultar("SELECT dias_entrega_prometidos FROM proveedor WHERE idproveedor = ?", (p.idproveedor,))
     if not prov:
         _error(ValueError("Proveedor no encontrado"), 404)
+    ahora = logica._ahora()   # fecha de referencia del sistema
     idpedido = db.ejecutar("""
-        INSERT INTO pedido (idproveedor, idsucursal, idtrabajador, fecha_prometida, estado)
+        INSERT INTO pedido (idproveedor, idsucursal, idtrabajador, fecha_pedido, fecha_prometida, estado)
         OUTPUT INSERTED.idpedido
-        VALUES (?, ?, ?, DATEADD(DAY, ?, SYSDATETIME()), 'pendiente')
-    """, (p.idproveedor, p.idsucursal, p.idtrabajador, prov[0]["dias_entrega_prometidos"]))
+        VALUES (?, ?, ?, ?, ?, 'pendiente')
+    """, (p.idproveedor, p.idsucursal, p.idtrabajador or logica.trabajador_por_defecto(p.idsucursal), ahora,
+          ahora + timedelta(days=prov[0]["dias_entrega_prometidos"])))
     for d in p.productos:
         db.ejecutar("""
             INSERT INTO detalle_pedido (idpedido, idproducto, cantidad_pedida, costo_unitario)
@@ -239,10 +285,26 @@ def mermas(idsucursal: int, dias: int = 30):
     }
 
 
+@app.get("/api/comparativo/mermas", tags=["Mermas"])
+def mermas_por_sucursal(dias: int = 30):
+    """Merma de cada sucursal con su región y tipo de sitio (vista del gerente)."""
+    return logica.merma_por_sucursal(dias)
+
+
+@app.get("/api/mermas/{idsucursal}/quiebres", tags=["Mermas"])
+def mermas_quiebres(idsucursal: int, dias: int = 30):
+    """Por producto: vendido, expirado, dañado y horas sin producto, con diagnóstico (se pide de más o de menos)."""
+    return logica.merma_y_quiebres(idsucursal, dias)
+
+
 @app.post("/api/mermas", tags=["Mermas"])
 def crear_merma(m: MermaEntrada):
+    datos = m.model_dump()
+    if datos["idtrabajador"] is None:
+        lote = db.consultar("SELECT idsucursal FROM lote WHERE idlote = ?", (m.idlote,))
+        datos["idtrabajador"] = logica.trabajador_por_defecto(lote[0]["idsucursal"] if lote else 1)
     try:
-        return {"idmerma": logica.registrar_merma(**m.model_dump())}
+        return {"idmerma": logica.registrar_merma(**datos)}
     except ValueError as e:
         _error(e)
 
@@ -250,6 +312,26 @@ def crear_merma(m: MermaEntrada):
 # =====================================================================
 # IA: chat y reportes
 # =====================================================================
+@app.get("/api/asistente/opciones", tags=["IA"])
+def asistente_opciones():
+    """Botones del menú del asistente."""
+    return [{"tipo": k, "titulo": v} for k, v in ia.TIPOS_CONSULTA.items()]
+
+
+@app.post("/api/asistente/{tipo}", tags=["IA"])
+def asistente_consulta(tipo: str, entrada: ConsultaEntrada):
+    """
+    Consultas predefinidas del menú: reporte, descuentos, pedidos o stock.
+    Cada una junta sus datos y hace una sola llamada a Gemini. Se guarda 10 min (desde_cache = true).
+    """
+    try:
+        return ia.consulta_predefinida(tipo, entrada.idsucursal, entrada.idtrabajador, entrada.forzar)
+    except ValueError as e:
+        _error(e, 404)
+    except ia.ErrorIA as e:
+        _error(e, 503)
+
+
 @app.post("/api/chat", tags=["IA"])
 def chat(entrada: ChatEntrada):
     """Pregúntale lo que sea al asistente. Manda el id_sesion que te regresó para continuar la conversación."""
@@ -269,7 +351,8 @@ def chat_reiniciar(id_sesion: str):
 def reporte_generar(entrada: ReporteEntrada):
     """Genera el reporte diario con Gemini y lo guarda como borrador."""
     try:
-        return ia.generar_reporte(entrada.idsucursal, entrada.idtrabajador)
+        return ia.generar_reporte(entrada.idsucursal,
+                                  entrada.idtrabajador or logica.trabajador_por_defecto(entrada.idsucursal))
     except ia.ErrorIA as e:
         _error(e, 503)
 
@@ -295,7 +378,7 @@ def reporte_revisar(idreporte: int, r: RevisionEntrada):
 def reportes(idsucursal: int | None = None, estado: str | None = None):
     """Lista de reportes (para la vista del gerente)."""
     sql = """
-        SELECT r.idreporte, r.titulo, r.contenido, r.estado, r.fecha, s.nombre AS sucursal,
+        SELECT r.idreporte, r.titulo, r.contenido, r.estado, r.fecha, RTRIM(s.nombre) AS sucursal,
                t.nombre + ' ' + t.apellido AS autor, r.comentario_gerente
         FROM reporte r
         JOIN sucursal s   ON s.idsucursal   = r.idsucursal

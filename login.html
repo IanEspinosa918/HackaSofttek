@@ -301,42 +301,31 @@
       USUARIO_NO_ENCONTRADO: 'Usuario no encontrado',
       CONTRASENA_INCORRECTA: 'Contraseña incorrecta',
       AMBOS_INCORRECTOS:     'Usuario y contraseña incorrectos',
-      CAMPOS_VACIOS:         'Ingresa tu usuario y contraseña'
+      CAMPOS_VACIOS:         'Ingresa tu usuario y contraseña',
+      SIN_ACCESO:            'Tu puesto no tiene acceso al sistema'
     };
 
     /*
-     * =====================================================
-     *  AQUÍ VA LA CONEXIÓN A LA BASE DE DATOS
-     * =====================================================
-     * Sustituye esta función por una llamada real a tu backend, por ejemplo:
-     *
-     *   const res = await fetch('/api/login', {
-     *     method: 'POST',
-     *     headers: { 'Content-Type': 'application/json' },
-     *     body: JSON.stringify({ usuario, contrasena })
-     *   });
-     *   return await res.json();   // { ok: true } o { ok: false, codigo: 'CONTRASENA_INCORRECTA' }
-     *
-     * Debe regresar:
-     *   { ok: true }                                  -> login correcto
+     * Conexión a la base de datos: POST /api/login del backend (FastAPI).
+     * Respuestas posibles:
+     *   { ok: true, usuario: {...} }                  -> login correcto
      *   { ok: false, codigo: 'USUARIO_NO_ENCONTRADO' }
      *   { ok: false, codigo: 'CONTRASENA_INCORRECTA' }
-     *   { ok: false, codigo: 'AMBOS_INCORRECTOS' }
-     *
-     * Por ahora es una simulación para probar el diseño:
-     *   - usuario "admin" + contraseña "1234"  -> entra
-     *   - usuario "admin" + otra contraseña    -> Contraseña incorrecta
-     *   - otro usuario + contraseña "1234"     -> Usuario no encontrado
-     *   - otro usuario + otra contraseña       -> Usuario y contraseña incorrectos
+     *   { ok: false, codigo: 'SIN_ACCESO' }           -> su puesto no es operador ni gerente
+     * Usuarios de prueba: corre "python asignar_contrasenas.py" en la carpeta backend.
      */
+    // Si la página la sirve el backend (puerto 8000) se usa la misma dirección; si se abre con doble clic, el backend local.
+    const API = (location.protocol.startsWith('http') && location.port === '8000') ? '' : 'http://localhost:8000';
+
+    // Valida contra la base de datos (POST /api/login). Regresa { ok, usuario } o { ok: false, codigo }.
     async function validarCredenciales(usuario, contrasena) {
-      await new Promise(r => setTimeout(r, 700)); // simula espera del servidor
-      const usuarioOk = usuario === 'admin';
-      const contrasenaOk = contrasena === '1234';
-      if (usuarioOk && contrasenaOk) return { ok: true };
-      if (!usuarioOk && !contrasenaOk) return { ok: false, codigo: 'AMBOS_INCORRECTOS' };
-      if (!usuarioOk) return { ok: false, codigo: 'USUARIO_NO_ENCONTRADO' };
-      return { ok: false, codigo: 'CONTRASENA_INCORRECTA' };
+      const res = await fetch(`${API}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario, contrasena })
+      });
+      if (!res.ok) throw new Error('Error del servidor');
+      return await res.json();
     }
 
     function limpiarErrores() {
@@ -385,6 +374,8 @@
         const res = await validarCredenciales(usuario, contrasena);
         if (res.ok) {
           // Login correcto: redirige a la página principal
+          // Guarda quién entró (nombre, rol y sucursal) para el dashboard y el asistente
+          try { localStorage.setItem('ti_usuario', JSON.stringify(res.usuario)); } catch {}
           window.location.href = 'dashboard.html';
         } else {
           mostrarError(res.codigo);

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tienda Inteligente · Asistente de inventario</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f4f1ec;
+      --panel: #ffffff;
+      --ink: #1d1b19;
+      --muted: #6f6a64;
+      --line: #e9e4dc;
+      --brand: #1f5c4a;
+      --brand-dark: #164537;
+      --brand-soft: #e6efeb;
+      --accent: #e8a33d;
+      --accent-soft: #fdf3e2;
+      --crit: #b42318;  --crit-bg: #fdecea;
+      --warn: #a15c07;  --warn-bg: #fdf3e2;
+      --ok: #1e7a46;    --ok-bg: #e5f4ea;
+      --info: #2b5c8a;  --info-bg: #e7eff7;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+    body {
+      font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+      background: var(--bg); color: var(--ink);
+      display: grid; grid-template-columns: 232px 1fr; min-height: 100vh;
+    }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+
+    /* ---------- Sidebar (igual que el dashboard) ---------- */
+    .sidebar {
+      background: var(--brand); color: #f4f1ec;
+      padding: 24px 16px; display: flex; flex-direction: column; gap: 28px;
+      position: sticky; top: 0; height: 100vh;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; padding: 0 8px; }
+    .logo-mark { width: 34px; height: 34px; border-radius: 9px; background: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
+    .logo-mark svg { width: 19px; height: 19px; }
+    .nav { display: flex; flex-direction: column; gap: 4px; }
+    .nav a {
+      display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px;
+      color: rgba(244,241,236,.78); text-decoration: none; font-size: 14px; font-weight: 500;
+    }
+    .nav a svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .nav a:hover { background: rgba(244,241,236,.08); color: #fff; }
+    .nav a.active { background: rgba(244,241,236,.14); color: #fff; font-weight: 600; }
+    .user { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 12px; background: rgba(244,241,236,.08); font-size: 13px; }
+    .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--ink); display: grid; place-items: center; font-weight: 700; flex-shrink: 0; }
+    .user small { display: block; color: rgba(244,241,236,.65); font-size: 11.5px; }
+
+    /* ---------- Main ---------- */
+    main { padding: 28px 32px 48px; min-width: 0; }
+    .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+    .topbar h1 { font-size: 24px; }
+    .topbar p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    .top-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    select { font-size: 14px; padding: 9px 12px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--panel); color: var(--ink); max-width: 320px; }
+    .chip { font-size: 12.5px; font-weight: 600; padding: 7px 12px; border-radius: 999px; background: var(--panel); border: 1.5px solid var(--line); color: var(--muted); white-space: nowrap; }
+    .chip b { color: var(--ink); }
+    .chip.offline { color: var(--crit); border-color: #f3c2bc; background: var(--crit-bg); }
+
+    /* Botones del menú */
+    .menu { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+    .opcion {
+      text-align: left; background: var(--panel); border: 2px solid transparent; border-radius: var(--radius);
+      padding: 18px; display: flex; flex-direction: column; gap: 10px; color: var(--ink);
+      transition: border-color .15s, transform .1s, box-shadow .15s;
+    }
+    .opcion:hover { border-color: var(--brand-soft); box-shadow: 0 10px 24px -18px rgba(29,27,25,.5); }
+    .opcion:active { transform: scale(.99); }
+    .opcion.activa { border-color: var(--brand); }
+    .opcion:disabled { opacity: .6; cursor: wait; }
+    .opcion .ico { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
+    .opcion .ico svg { width: 21px; height: 21px; }
+    .opcion b { font-size: 15px; }
+    .opcion span { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+
+    .grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+    .card { background: var(--panel); border-radius: var(--radius); padding: 20px; min-width: 0; }
+    .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+    .card-head h2 { font-size: 16px; }
+    .card-head p { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+
+    .btn { border: none; border-radius: 10px; padding: 9px 14px; font-size: 13.5px; font-weight: 600; background: var(--brand); color: #fff; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+    .btn:hover { background: var(--brand-dark); }
+    .btn.ghost { background: var(--brand-soft); color: var(--brand); }
+    .btn.ghost:hover { background: #d7e6df; }
+    .btn svg { width: 15px; height: 15px; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+
+    /* Resultado */
+    .resultado { min-height: 420px; }
+    .vacio { display: grid; place-items: center; text-align: center; color: var(--muted); padding: 70px 20px; gap: 10px; font-size: 14px; }
+    .vacio svg { width: 44px; height: 44px; color: var(--brand); opacity: .5; }
+    .meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+    .tag { font-size: 11.5px; font-weight: 600; padding: 4px 9px; border-radius: 999px; background: var(--bg); color: var(--muted); }
+    .tag.ia { background: var(--brand-soft); color: var(--brand); }
+    .tag.cache { background: var(--info-bg); color: var(--info); }
+    .tag.respaldo { background: var(--warn-bg); color: var(--warn); }
+
+    .cargando { display: flex; align-items: center; gap: 12px; color: var(--muted); padding: 60px 0; justify-content: center; font-size: 14px; }
+    .spinner { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--brand-soft); border-top-color: var(--brand); animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error { background: var(--crit-bg); color: var(--crit); padding: 14px; border-radius: 12px; font-size: 14px; }
+
+    /* Markdown generado por la IA */
+    .md { font-size: 14.5px; line-height: 1.65; }
+    .md h1, .md h2, .md h3 { font-size: 15.5px; margin: 18px 0 8px; }
+    .md h1:first-child, .md h2:first-child, .md h3:first-child { margin-top: 0; }
+    .md p { margin: 8px 0; }
+    .md ul, .md ol { padding-left: 22px; margin: 8px 0; }
+    .md li { margin: 4px 0; }
+    .md code { background: var(--bg); padding: 1px 6px; border-radius: 6px; font-size: 13px; }
+    .md table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px; display: block; overflow-x: auto; }
+    .md th { text-align: left; background: var(--bg); padding: 8px 10px; font-weight: 600; white-space: nowrap; }
+    .md td { padding: 8px 10px; border-top: 1px solid var(--line); }
+
+    /* Datos usados */
+    details { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+    summary { font-size: 13px; font-weight: 600; color: var(--brand); cursor: pointer; }
+    .tabla-wrap { overflow-x: auto; margin-top: 10px; }
+    table.datos { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    table.datos th { text-align: left; color: var(--muted); font-weight: 600; padding: 6px 8px; white-space: nowrap; }
+    table.datos td { padding: 7px 8px; border-top: 1px solid var(--line); white-space: nowrap; }
+    table.datos td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .estado { font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 999px; }
+    .e-agotado { background: var(--crit-bg); color: var(--crit); }
+    .e-bajo { background: var(--warn-bg); color: var(--warn); }
+    .e-exceso { background: var(--info-bg); color: var(--info); }
+    .e-ok { background: var(--ok-bg); color: var(--ok); }
+    .kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin-top: 10px; }
+    .kv div { background: var(--bg); border-radius: 10px; padding: 10px 12px; font-size: 12px; color: var(--muted); }
+    .kv b { display: block; font-size: 16px; color: var(--ink); margin-top: 2px; }
+
+    /* Chat libre */
+    .chat { display: flex; flex-direction: column; height: 620px; position: sticky; top: 20px; }
+    .mensajes { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 4px 2px 10px; }
+    .msg { max-width: 92%; padding: 10px 13px; border-radius: 14px; font-size: 14px; line-height: 1.55; }
+    .msg.yo { align-self: flex-end; background: var(--brand); color: #fff; border-bottom-right-radius: 4px; }
+    .msg.ia { align-self: flex-start; background: var(--bg); border-bottom-left-radius: 4px; }
+    .msg.ia .md { font-size: 13.5px; }
+    .msg .uso { margin-top: 6px; font-size: 11px; color: var(--muted); }
+    .sugerencias { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+    .sugerencias button { font-size: 12px; padding: 6px 10px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--panel); color: var(--ink); }
+    .sugerencias button:hover { border-color: var(--brand); color: var(--brand); }
+    .entrada { display: flex; gap: 8px; }
+    .entrada input { flex: 1; min-width: 0; padding: 11px 13px; border-radius: 12px; border: 1.5px solid var(--line); background: #fbfaf8; font-size: 14px; }
+    .entrada input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 4px rgba(31,92,74,.12); background: #fff; }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 1150px) {
+      .menu { grid-template-columns: repeat(2, 1fr); }
+      .grid { grid-template-columns: 1fr; }
+      .chat { position: static; height: 520px; }
+    }
+    @media (max-width: 760px) {
+      body { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; flex-direction: row; align-items: center; padding: 12px 16px; overflow-x: auto; gap: 16px; }
+      .nav { flex-direction: row; }
+      .nav a span, .user, .logo span { display: none; }
+      main { padding: 20px 16px 40px; }
+      .menu { gap: 10px; }
+      .opcion { padding: 14px; }
+      .opcion span { display: none; }
+      select { max-width: 100%; }
+      .md td, .md th { white-space: nowrap; }
+    }
+  </style>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1d1b19" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0V9z"/><path d="M5 13v7h14v-7"/></svg>
+      </div>
+      <span>Tienda Inteligente</span>
+    </div>
+    <nav class="nav">
+      <a href="dashboard.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><span>Panel</span></a>
+      <a href="asistente.html" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z"/><path d="M19 17l.8 2.2L22 20l-2.2.8L19 23l-.8-2.2L16 20l2.2-.8z"/></svg><span>Asistente IA</span></a>
+    </nav>
+    <div class="user">
+      <div class="avatar" id="avatar">OP</div>
+      <div><span id="nombreUsuario">Operador</span><small>Operador de inventario</small></div>
+    </div>
+  </aside>
+
+  <main>
+    <header class="topbar">
+      <div>
+        <h1>Asistente de inventario</h1>
+        <p>Elige una consulta o pregúntale lo que necesites</p>
+      </div>
+      <div class="top-actions">
+        <select id="sucursal" aria-label="Sucursal"><option>Cargando sucursales…</option></select>
+        <span class="chip" id="chipFecha">Conectando…</span>
+      </div>
+    </header>
+
+    <!-- Menú de consultas predefinidas -->
+    <section class="menu" id="menu">
+      <button class="opcion" data-tipo="reporte">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg></div>
+        <b>Reporte diario</b>
+        <span>Resumen del día para el gerente: riesgos, proveedores y acciones.</span>
+      </button>
+      <button class="opcion" data-tipo="descuentos">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg></div>
+        <b>¿Qué descuentos aplicar?</b>
+        <span>Lotes por caducar y exceso de inventario, con el % sugerido.</span>
+      </button>
+      <button class="opcion" data-tipo="pedidos">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg></div>
+        <b>¿Qué y cuánto pedir?</b>
+        <span>Pedido sugerido por proveedor según venta y retrasos reales.</span>
+      </button>
+      <button class="opcion" data-tipo="stock">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></div>
+        <b>Stock actual</b>
+        <span>Qué está agotado, bajo, en exceso o bien, y qué hacer.</span>
+      </button>
+    </section>
+
+    <section class="grid">
+      <!-- Resultado de la consulta -->
+      <article class="card resultado">
+        <div class="card-head">
+          <div>
+            <h2 id="resTitulo">Resultado</h2>
+            <p id="resSub">Elige una de las opciones de arriba</p>
+          </div>
+          <button class="btn ghost" id="btnRegenerar" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+            Regenerar
+          </button>
+        </div>
+        <div id="resCuerpo">
+          <div class="vacio">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z"/></svg>
+            La IA analiza los datos de tu sucursal y te da la respuesta aquí.
+          </div>
+        </div>
+      </article>
+
+      <!-- Chat libre -->
+      <article class="card chat">
+        <div class="card-head">
+          <div>
+            <h2>Pregúntale lo que sea</h2>
+            <p>La IA consulta la base de datos para responder</p>
+          </div>
+          <button class="btn ghost" id="btnNuevoChat" title="Empezar una conversación nueva">Nuevo</button>
+        </div>
+        <div class="mensajes" id="mensajes"></div>
+        <div class="sugerencias" id="sugerencias">
+          <button>¿Qué sucursal tiene más merma?</button>
+          <button>¿Qué proveedores incumplen su contrato?</button>
+          <button>¿Qué productos se piden de más?</button>
+        </div>
+        <form class="entrada" id="formChat">
+          <input id="inputChat" placeholder="Escribe tu pregunta…" autocomplete="off" maxlength="2000">
+          <button class="btn" id="btnEnviar" type="submit" aria-label="Enviar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
+          </button>
+        </form>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    // Si la página la sirve el propio backend (http://localhost:8000/app/...) se usa la misma dirección;
+    // si se abre con doble clic, se apunta al backend local.
+    const API = (location.protocol.startsWith('http') && location.port === '8000') ? '' : 'http://localhost:8000';
+
+    const $ = id => document.getElementById(id);
+    const estado = { tipo: null, idSesion: null, ocupado: false };
+
+    // Usuario guardado por el login (si existe)
+    let usuario = null;
+    try { usuario = JSON.parse(localStorage.getItem('ti_usuario') || 'null'); } catch { usuario = null; }
+    if (usuario) {
+      $('nombreUsuario').textContent = `${usuario.nombre} ${usuario.apellido || ''}`.trim();
+      $('avatar').textContent = ((usuario.nombre || 'O')[0] + (usuario.apellido || 'P')[0]).toUpperCase();
+    }
+
+    async function api(ruta, opciones = {}) {
+      const res = await fetch(API + ruta, {
+        headers: { 'Content-Type': 'application/json' },
+        ...opciones,
+      });
+      const datos = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(datos.detail || `Error ${res.status}`);
+      return datos;
+    }
+
+    // ---------- Markdown sencillo (títulos, negritas, listas, tablas) ----------
+    function escapar(t) {
+      return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function enLinea(t) {
+      return escapar(t)
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
+    }
+    function markdown(texto) {
+      const lineas = String(texto || '').replace(/\r/g, '').split('\n');
+      let html = '', lista = null, i = 0;
+      const cerrarLista = () => { if (lista) { html += `</${lista}>`; lista = null; } };
+      while (i < lineas.length) {
+        const l = lineas[i];
+        const t = l.trim();
+        if (/^\|.*\|$/.test(t) && i + 1 < lineas.length && /^\|?\s*:?-{2,}/.test(lineas[i + 1].trim())) {
+          cerrarLista();
+          const celdas = s => s.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+          html += '<table><thead><tr>' + celdas(t).map(c => `<th>${enLinea(c)}</th>`).join('') + '</tr></thead><tbody>';
+          i += 2;
+          while (i < lineas.length && /^\|.*\|$/.test(lineas[i].trim())) {
+            html += '<tr>' + celdas(lineas[i]).map(c => `<td>${enLinea(c)}</td>`).join('') + '</tr>';
+            i++;
+          }
+          html += '</tbody></table>';
+          continue;
+        }
+        let m;
+        if ((m = t.match(/^(#{1,3})\s+(.*)$/))) { cerrarLista(); html += `<h${m[1].length}>${enLinea(m[2])}</h${m[1].length}>`; }
+        else if ((m = t.match(/^[-*•]\s+(.*)$/))) { if (lista !== 'ul') { cerrarLista(); html += '<ul>'; lista = 'ul'; } html += `<li>${enLinea(m[1])}</li>`; }
+        else if ((m = t.match(/^\d+[.)]\s+(.*)$/))) { if (lista !== 'ol') { cerrarLista(); html += '<ol>'; lista = 'ol'; } html += `<li>${enLinea(m[1])}</li>`; }
+        else if (t === '') { cerrarLista(); }
+        else { cerrarLista(); html += `<p>${enLinea(t)}</p>`; }
+        i++;
+      }
+      cerrarLista();
+      return html;
+    }
+
+    // ---------- Tablas con los datos que usó la IA ----------
+    const COLUMNAS = {
+      descuentos: [['producto', 'Producto'], ['idlote', 'Lote'], ['existencia', 'Existencia', 'num'], ['dias_para_caducar', 'Días p/ caducar', 'num'],
+                   ['unidades_que_no_se_venderian', 'No se venderían', 'num'], ['valor_en_riesgo', 'Valor en riesgo', 'dinero'], ['descuento_sugerido_pct', 'Descuento', 'pct']],
+      pedidos:    [['producto', 'Producto'], ['proveedor', 'Proveedor'], ['existencia', 'Existencia', 'num'], ['en_camino', 'En camino', 'num'],
+                   ['cantidad_sugerida', 'Pedir', 'num'], ['costo_estimado', 'Costo', 'dinero'], ['urgente', 'Urgente', 'si']],
+      stock:      [['producto', 'Producto'], ['existencia', 'Existencia', 'num'], ['venta_promedio_diaria', 'Venta/día', 'num'],
+                   ['dias_cobertura', 'Cobertura (días)', 'num'], ['proxima_caducidad', 'Próx. caducidad'], ['estado', 'Estado', 'estado']],
+    };
+    const ETIQUETAS_REPORTE = {
+      valor_en_riesgo_7_dias: ['Valor en riesgo (7 días)', 'dinero'], lotes_por_caducar_7_dias: ['Lotes por caducar (7 días)'],
+      lotes_por_caducar_48_horas: ['Caducan en 48 h'], productos_con_sobreinventario: ['Con sobreinventario'],
+      valor_sobreinventario_en_riesgo: ['Valor en exceso', 'dinero'], entregas_pendientes: ['Entregas pendientes'],
+      entregas_retrasadas: ['Entregas retrasadas'], merma_ultimos_30_dias: ['Merma (30 días)', 'dinero'],
+    };
+    function formato(valor, tipo) {
+      if (valor === null || valor === undefined || valor === '') return '—';
+      if (tipo === 'dinero') return '$' + Number(valor).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (tipo === 'pct') return valor + '%';
+      if (tipo === 'si') return valor ? '⚠️ Sí' : 'No';
+      if (tipo === 'estado') return `<span class="estado e-${escapar(valor)}">${escapar(valor)}</span>`;
+      if (tipo === 'num') return Number(valor).toLocaleString('es-MX');
+      return escapar(valor);
+    }
+    function tablaDatos(tipo, datos) {
+      if (tipo === 'reporte' && datos && !Array.isArray(datos)) {
+        return '<div class="kv">' + Object.entries(datos).map(([k, v]) => {
+          const [etq, t] = ETIQUETAS_REPORTE[k] || [k];
+          return `<div>${escapar(etq)}<b>${formato(v, t)}</b></div>`;
+        }).join('') + '</div>';
+      }
+      if (!Array.isArray(datos) || !datos.length) return '<p style="font-size:13px;color:var(--muted);margin-top:10px">Sin registros.</p>';
+      const cols = COLUMNAS[tipo];
+      return '<div class="tabla-wrap"><table class="datos"><thead><tr>' +
+        cols.map(([, n, t]) => `<th style="${t && t !== 'estado' && t !== 'si' ? 'text-align:right' : ''}">${n}</th>`).join('') +
+        '</tr></thead><tbody>' +
+        datos.map(fila => '<tr>' + cols.map(([k, , t]) =>
+          `<td class="${t && t !== 'estado' && t !== 'si' ? 'num' : ''}">${formato(fila[k], t)}</td>`).join('') + '</tr>').join('') +
+        '</tbody></table></div>';
+    }
+
+    // ---------- Consultas predefinidas ----------
+    function idSucursal() { return Number($('sucursal').value) || 1; }
+
+    async function consultar(tipo, forzar = false) {
+      if (estado.ocupado) return;
+      estado.ocupado = true;
+      estado.tipo = tipo;
+      document.querySelectorAll('.opcion').forEach(b => { b.disabled = true; b.classList.toggle('activa', b.dataset.tipo === tipo); });
+      $('btnRegenerar').hidden = true;
+      $('resTitulo').textContent = document.querySelector(`.opcion[data-tipo="${tipo}"] b`).textContent;
+      $('resSub').textContent = $('sucursal').selectedOptions[0]?.textContent || '';
+      $('resCuerpo').innerHTML = '<div class="cargando"><div class="spinner"></div>La IA está analizando los datos…</div>';
+
+      try {
+        const r = await api(`/api/asistente/${tipo}`, {
+          method: 'POST',
+          body: JSON.stringify({ idsucursal: idSucursal(), idtrabajador: usuario?.idtrabajador ?? null, forzar }),
+        });
+        $('resTitulo').textContent = r.titulo;
+        const etiquetas = [
+          '<span class="tag ia">Generado con IA</span>',
+          r.desde_cache ? '<span class="tag cache">Respuesta reciente guardada</span>' : '',
+          r.modelo && r.modelo.includes('lite') ? '<span class="tag respaldo">Modelo de respaldo</span>' : '',
+          r.idreporte ? `<span class="tag">Guardado como borrador #${r.idreporte}</span>` : '',
+        ].join('');
+        $('resCuerpo').innerHTML = `
+          <div class="meta">${etiquetas}</div>
+          <div class="md">${markdown(r.contenido)}</div>
+          <details><summary>Ver los datos que usó la IA</summary>${tablaDatos(tipo, r.datos)}</details>`;
+        $('btnRegenerar').hidden = false;
+      } catch (e) {
+        $('resCuerpo').innerHTML = `<div class="error">No se pudo completar la consulta: ${escapar(e.message)}</div>`;
+      } finally {
+        estado.ocupado = false;
+        document.querySelectorAll('.opcion').forEach(b => b.disabled = false);
+      }
+    }
+
+    document.querySelectorAll('.opcion').forEach(b => b.addEventListener('click', () => consultar(b.dataset.tipo)));
+    $('btnRegenerar').addEventListener('click', () => estado.tipo && consultar(estado.tipo, true));
+
+    // ---------- Chat libre ----------
+    function agregarMensaje(quien, html, uso) {
+      const div = document.createElement('div');
+      div.className = `msg ${quien}`;
+      div.innerHTML = html + (uso ? `<div class="uso">${uso}</div>` : '');
+      $('mensajes').appendChild(div);
+      $('mensajes').scrollTop = $('mensajes').scrollHeight;
+      return div;
+    }
+    function saludo() {
+      $('mensajes').innerHTML = '';
+      agregarMensaje('ia', '<div class="md"><p>Hola, soy tu asistente de inventario. Pregúntame sobre mermas, caducidades, pedidos, proveedores o cualquier dato de las sucursales.</p></div>');
+    }
+
+    async function enviarPregunta(texto) {
+      texto = texto.trim();
+      if (!texto) return;
+      $('inputChat').value = '';
+      $('btnEnviar').disabled = true;
+      $('sugerencias').hidden = true;
+      agregarMensaje('yo', escapar(texto));
+      const pensando = agregarMensaje('ia', '<div class="cargando" style="padding:4px 0;justify-content:flex-start"><div class="spinner" style="width:16px;height:16px;border-width:2px"></div>Consultando…</div>');
+      try {
+        const r = await api('/api/chat', {
+          method: 'POST',
+          body: JSON.stringify({
+            mensaje: texto, id_sesion: estado.idSesion, idsucursal: idSucursal(),
+            nombre_usuario: usuario ? usuario.nombre : null,
+          }),
+        });
+        estado.idSesion = r.id_sesion;
+        pensando.remove();
+        const uso = r.herramientas_usadas && r.herramientas_usadas.length
+          ? 'Consultó: ' + r.herramientas_usadas.map(escapar).join(', ') : '';
+        agregarMensaje('ia', `<div class="md">${markdown(r.respuesta)}</div>`, uso);
+      } catch (e) {
+        pensando.remove();
+        agregarMensaje('ia', `<div class="error" style="padding:0;background:none">${escapar(e.message)}</div>`);
+      } finally {
+        $('btnEnviar').disabled = false;
+        $('inputChat').focus();
+      }
+    }
+
+    $('formChat').addEventListener('submit', e => { e.preventDefault(); enviarPregunta($('inputChat').value); });
+    document.querySelectorAll('#sugerencias button').forEach(b => b.addEventListener('click', () => enviarPregunta(b.textContent)));
+    $('btnNuevoChat').addEventListener('click', async () => {
+      if (estado.idSesion) { try { await api(`/api/chat/${estado.idSesion}`, { method: 'DELETE' }); } catch {} }
+      estado.idSesion = null;
+      $('sugerencias').hidden = false;
+      saludo();
+    });
+
+    // ---------- Arranque ----------
+    async function iniciar() {
+      saludo();
+      try {
+        const [salud, sucursales] = await Promise.all([api('/api/salud'), api('/api/sucursales')]);
+        $('chipFecha').innerHTML = salud.fecha_referencia ? `Datos al <b>${salud.fecha_referencia}</b>` : 'Conectado';
+        $('sucursal').innerHTML = sucursales.map(s =>
+          `<option value="${s.idsucursal}">${escapar(s.codigo ? s.nombre : s.nombre)}</option>`).join('');
+        if (usuario?.idsucursal) $('sucursal').value = usuario.idsucursal;
+      } catch (e) {
+        $('chipFecha').textContent = 'Sin conexión con el backend';
+        $('chipFecha').classList.add('offline');
+        $('sucursal').innerHTML = '<option value="1">Sucursal 1</option>';
+      }
+    }
+    // Al cambiar de sucursal, la conversación empieza de nuevo (el contexto es otra sucursal)
+    $('sucursal').addEventListener('change', () => { estado.idSesion = null; $('sugerencias').hidden = false; saludo(); });
+    iniciar();
+  </script>
+</body>
+</html>

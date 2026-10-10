@@ -79,21 +79,28 @@ def _manejar_error(e: Exception) -> ErrorIA:
 # Esquema que se le explica a Gemini para el respaldo de texto a SQL
 # =====================================================================
 ESQUEMA_BD = """
-Base de datos SQL Server "Hakaton_JR" (usa sintaxis T-SQL: TOP en lugar de LIMIT, GETDATE(), DATEADD, DATEDIFF).
+Base de datos SQL Server "Hakaton_JR" (usa sintaxis T-SQL: TOP en lugar de LIMIT, DATEADD, DATEDIFF).
+Los datos vienen del dataset de Glazed Co. (tiendas de donas y café en aeropuertos y estaciones).
+IMPORTANTE: el "hoy" del sistema NO es GETDATE(); es (SELECT fecha_ref FROM vw_fecha_referencia),
+el último día con ventas. Usa siempre esa fecha para "hoy", "esta semana", "últimos 30 días", etc.
 
-sucursal(idsucursal, nombre, direccion, telefono, activa)
+sucursal(idsucursal, codigo, nombre, direccion, telefono, activa, region, tipo_sitio, fecha_cierre)
+    -- codigo: S001...; region: Northeast, Southwest...; tipo_sitio: Airport, Rail Station, Bus Terminal, Resort
 puesto(idpuesto, nombre, rol_sistema)                       -- rol_sistema: operador | gerente | ninguno
 turno(idturno, nombre, hora_inicio, hora_fin)
 trabajador(idtrabajador, nombre, apellido, idsucursal, idpuesto, idturno, activo)
 categoria(idcategoria, nombre)
-proveedor(idproveedor, nombre, telefono, correo, dias_entrega_prometidos)
-producto(idproducto, nombre, idcategoria, idproveedor, precio_venta, costo, vida_util_dias, es_perecedero, unidad, activo)
+proveedor(idproveedor, codigo, nombre, telefono, correo, dias_entrega_prometidos, fill_rate_contrato, puntualidad_contrato)
+    -- fill_rate_contrato y puntualidad_contrato son fracciones (0.95 = 95%)
+producto(idproducto, sku, nombre, idcategoria, idproveedor, precio_venta, costo, vida_util_dias, es_perecedero, unidad, tamano_caja, activo)
 lote(idlote, idproducto, idsucursal, iddetalle_pedido, cantidad_inicial, cantidad_actual, fecha_entrada, fecha_caducidad)
 venta(idventa, idsucursal, fecha, total)
 detalle_venta(iddetalle_venta, idventa, idproducto, idlote, cantidad, precio_unitario, descuento_pct)
 pedido(idpedido, idproveedor, idsucursal, idtrabajador, fecha_pedido, fecha_prometida, fecha_llegada, estado, observaciones)
     -- estado: pendiente | en_camino | recibido | cancelado
 detalle_pedido(iddetalle_pedido, idpedido, idproducto, cantidad_pedida, cantidad_recibida, cantidad_danada, costo_unitario)
+inventario_diario(idsucursal, idproducto, fecha, cantidad_apertura, recibida, vendida, expirada, danada, cantidad_cierre, en_pedido, horas_quiebre)
+    -- foto diaria por sucursal y producto; expirada/danada = merma del día; horas_quiebre = horas sin producto
 transferencia(idtransferencia, idlote, idsucursal_origen, idsucursal_destino, cantidad, fecha, idtrabajador, estado)
 causa_merma(idcausa, nombre, descripcion)                   -- Caducidad, Daño, Proveedor, Robo, Otro
 merma(idmerma, idlote, idcausa, idtrabajador, cantidad, costo_total, fecha, observaciones)
@@ -101,8 +108,9 @@ promocion(idpromocion, idlote, porcentaje, fecha_inicio, fecha_fin, motivo, orig
 reporte(idreporte, idtrabajador, idsucursal, fecha, titulo, contenido, estado, idgerente, fecha_revision, comentario_gerente)
 
 Vistas:
+vw_fecha_referencia(fecha_ref)                                               -- el "hoy" del sistema
 vw_inventario_actual(idsucursal, sucursal, idproducto, producto, categoria, existencia, proxima_caducidad)
-vw_venta_promedio_diaria(idsucursal, idproducto, venta_promedio_diaria)      -- últimos 30 días
+vw_venta_promedio_diaria(idsucursal, idproducto, venta_promedio_diaria)      -- 30 días hasta fecha_ref
 vw_retraso_proveedor(idproveedor, proveedor, entregas, retraso_promedio_horas, pct_entregas_tarde)
 vw_productos_por_caducar(idlote, idsucursal, sucursal, idproducto, producto, cantidad_actual, fecha_caducidad, dias_para_caducar, valor_en_riesgo)
 """
@@ -138,6 +146,7 @@ HERRAMIENTAS = [
     logica.listar_sucursales,
     logica.resumen_sucursal,
     logica.productos_por_caducar,
+    logica.stock_actual,
     logica.sobreinventario,
     logica.retraso_proveedores,
     logica.entregas_pendientes,
@@ -146,8 +155,51 @@ HERRAMIENTAS = [
     logica.merma_por_causa,
     logica.merma_por_producto,
     logica.merma_por_semana,
+    logica.merma_por_sucursal,
+    logica.merma_y_quiebres,
     consulta_sql,
 ]
+
+
+_MAPA_HERRAMIENTAS = {f.__name__: f for f in HERRAMIENTAS}
+
+
+def _texto(respuesta) -> str:
+    """Junta solo las partes de texto (evita el aviso del SDK cuando hay partes que no son texto)."""
+    try:
+        partes = respuesta.candidates[0].content.parts or []
+    except (AttributeError, IndexError, TypeError):
+        return ""
+    return "".join(p.text for p in partes if getattr(p, "text", None)).strip()
+
+
+def _llamadas_pendientes(respuesta) -> list:
+    try:
+        partes = respuesta.candidates[0].content.parts or []
+    except (AttributeError, IndexError, TypeError):
+        return []
+    return [p.function_call for p in partes if getattr(p, "function_call", None)]
+
+
+def _ejecutar_llamadas(llamadas) -> list:
+    """
+    Ejecuta herramientas que el SDK dejó sin correr. Pasa cuando el modelo llama una función
+    sin argumentos (el SDK solo ejecuta llamadas con args) o cuando se agotan las llamadas automáticas.
+    """
+    partes = []
+    for fc in llamadas:
+        funcion = _MAPA_HERRAMIENTAS.get(fc.name)
+        if funcion is None:
+            resultado = {"error": f"La herramienta '{fc.name}' no existe."}
+        else:
+            try:
+                args = {k: (int(v) if isinstance(v, float) and v.is_integer() else v)
+                        for k, v in dict(fc.args or {}).items()}
+                resultado = {"result": funcion(**args)}
+            except Exception as e:
+                resultado = {"error": str(e)}
+        partes.append(types.Part.from_function_response(name=fc.name, response=resultado))
+    return partes
 
 
 def _instrucciones_chat(idsucursal: int | None, nombre_usuario: str | None) -> str:
@@ -165,10 +217,12 @@ Reglas:
 - Usa SIEMPRE las herramientas para obtener datos. Nunca inventes números, productos ni proveedores.
 - Si mencionan una sucursal por nombre, usa listar_sucursales para obtener su id.
 - Prefiere las herramientas específicas; usa consulta_sql solo si ninguna otra sirve.
-- Expresa dinero en pesos mexicanos con formato $1,234.
+- Para saber si se pide de más o de menos usa merma_y_quiebres; para comparar sucursales usa merma_por_sucursal.
+- Si la pregunta es sobre todas las sucursales, llama la herramienta UNA vez sin idsucursal en lugar de una vez por sucursal.
+- Expresa dinero con signo $ y dos decimales (ej. $1,234.50); los productos cuestan centavos o pocos dólares.
 - Cuando tenga sentido, termina con una acción concreta recomendada.
 - Si no hay datos para responder, dilo claramente.
-- La fecha de hoy es {date.today().isoformat()}.{contexto}
+- La fecha de hoy en el sistema es {logica.fecha_referencia().isoformat()} (último día con datos). Cuando hables de "hoy" refiérete a esa fecha.{contexto}
 
 Esquema de la base de datos (para consulta_sql):
 {ESQUEMA_BD}"""
@@ -199,7 +253,7 @@ def _nuevo_chat(idsucursal: int | None, nombre_usuario: str | None, modelo: str 
             system_instruction=_instrucciones_chat(idsucursal, nombre_usuario),
             tools=HERRAMIENTAS,
             temperature=0.2,  # respuestas consistentes, poco "creativas"
-            automatic_function_calling=types.AutomaticFunctionCallingConfig(maximum_remote_calls=8),
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(maximum_remote_calls=10),
         ),
     )
 
@@ -222,6 +276,7 @@ def chatear(mensaje: str, id_sesion: str | None = None, idsucursal: int | None =
 
     sesion = _SESIONES[id_sesion]
     sesion["ultimo_uso"] = time.time()
+    inicio_historial = len(sesion["chat"].get_history())   # para saber qué herramientas se usaron en este turno
     try:
         respuesta = sesion["chat"].send_message(mensaje)
     except Exception as e:
@@ -230,20 +285,32 @@ def chatear(mensaje: str, id_sesion: str | None = None, idsucursal: int | None =
         # El modelo principal sigue saturado: se cambia al de respaldo conservando la conversación
         try:
             historial = sesion["chat"].get_history()
+            inicio_historial = len(historial)
             sesion["chat"] = _nuevo_chat(sesion["idsucursal"], sesion["nombre_usuario"], MODELO_RESPALDO, historial)
             sesion["modelo"] = MODELO_RESPALDO
             respuesta = sesion["chat"].send_message(mensaje)
         except Exception as e2:
             raise _manejar_error(e2)
 
+    # Si la respuesta terminó en una llamada a herramienta sin ejecutar, la corremos nosotros y seguimos
+    for _ in range(3):
+        pendientes = _llamadas_pendientes(respuesta)
+        if not pendientes or _texto(respuesta):
+            break
+        try:
+            respuesta = sesion["chat"].send_message(_ejecutar_llamadas(pendientes))
+        except Exception as e:
+            raise _manejar_error(e)
+
+    # El chat guarda en su historial cada llamada a herramienta; se revisan solo las de este turno
     herramientas_usadas = []
-    for contenido in respuesta.automatic_function_calling_history or []:
+    for contenido in sesion["chat"].get_history()[inicio_historial:]:
         for parte in contenido.parts or []:
             if parte.function_call and parte.function_call.name not in herramientas_usadas:
                 herramientas_usadas.append(parte.function_call.name)
 
     return {
-        "respuesta": respuesta.text or "No pude generar una respuesta, intenta reformular la pregunta.",
+        "respuesta": _texto(respuesta) or "No pude generar una respuesta, intenta reformular la pregunta.",
         "id_sesion": id_sesion,
         "herramientas_usadas": herramientas_usadas,
         "modelo": sesion["modelo"],
@@ -274,16 +341,16 @@ Indica qué acciones requieren aprobación del gerente (descuentos mayores a 30%
 Reglas:
 - Usa SOLO los datos proporcionados. No inventes cifras ni productos.
 - Si una sección no tiene datos, dilo en una línea.
-- Dinero en pesos mexicanos con formato $1,234.
+- Dinero con signo $ y dos decimales (ej. $1,234.50).
 - Sé concreto: máximo ~300 palabras."""
 
 
 def _datos_para_reporte(idsucursal: int) -> dict:
-    sucursal = db.consultar("SELECT nombre FROM sucursal WHERE idsucursal = ?", (idsucursal,))
+    sucursal = db.consultar("SELECT RTRIM(nombre) AS nombre FROM sucursal WHERE idsucursal = ?", (idsucursal,))
     transferencias = [t for t in logica.transferencias_sugeridas()
                       if idsucursal in (t["idsucursal_origen"], t["idsucursal_destino"])]
     return {
-        "fecha": date.today().isoformat(),
+        "fecha": logica.fecha_referencia().isoformat(),
         "sucursal": sucursal[0]["nombre"] if sucursal else str(idsucursal),
         "indicadores": logica.resumen_sucursal(idsucursal),
         "productos_por_caducar": logica.productos_por_caducar(idsucursal, 7)[:15],
@@ -293,31 +360,34 @@ def _datos_para_reporte(idsucursal: int) -> dict:
         "pedidos_sugeridos": logica.sugerir_pedidos(idsucursal)[:10],
         "transferencias_sugeridas": transferencias[:10],
         "merma_por_causa_30_dias": logica.merma_por_causa(idsucursal, 30),
+        "merma_y_quiebres_por_producto_30_dias": logica.merma_y_quiebres(idsucursal, 30)[:10],
     }
 
 
-def generar_reporte(idsucursal: int, idtrabajador: int, guardar: bool = True) -> dict:
-    """Junta los datos de la sucursal, le pide a Gemini el reporte y lo guarda como borrador."""
-    datos = _datos_para_reporte(idsucursal)
-    contenido_prompt = f"Datos de la sucursal (JSON):\n{json.dumps(datos, ensure_ascii=False, default=str)}"
-    r = None
+def _generar_texto(instrucciones: str, datos: dict, temperatura: float = 0.3) -> tuple[str, str]:
+    """Una sola llamada a Gemini con datos ya calculados. Usa el modelo de respaldo si el principal está saturado."""
+    contenido_prompt = f"Datos (JSON):\n{json.dumps(datos, ensure_ascii=False, default=str)}"
     ultimo_error: Exception | None = None
     for modelo in _modelos():
         try:
             r = cliente().models.generate_content(
                 model=modelo,
                 contents=contenido_prompt,
-                config=types.GenerateContentConfig(system_instruction=INSTRUCCIONES_REPORTE, temperature=0.3),
+                config=types.GenerateContentConfig(system_instruction=instrucciones, temperature=temperatura),
             )
-            break
+            return _texto(r), modelo
         except Exception as e:
             ultimo_error = e
             if not _es_temporal(e):
                 break
-    if r is None:
-        raise _manejar_error(ultimo_error)
+    raise _manejar_error(ultimo_error)
 
-    contenido = r.text or "No se pudo generar el reporte."
+
+def generar_reporte(idsucursal: int, idtrabajador: int, guardar: bool = True) -> dict:
+    """Junta los datos de la sucursal, le pide a Gemini el reporte y lo guarda como borrador."""
+    datos = _datos_para_reporte(idsucursal)
+    texto, modelo = _generar_texto(INSTRUCCIONES_REPORTE, datos)
+    contenido = texto or "No se pudo generar el reporte."
     titulo = f"Reporte diario - {datos['sucursal']} - {datos['fecha']}"
     idreporte = None
     if guardar:
@@ -325,4 +395,157 @@ def generar_reporte(idsucursal: int, idtrabajador: int, guardar: bool = True) ->
             INSERT INTO reporte (idtrabajador, idsucursal, titulo, contenido, estado)
             OUTPUT INSERTED.idreporte VALUES (?, ?, ?, ?, 'borrador')
         """, (idtrabajador, idsucursal, titulo, contenido))
-    return {"idreporte": idreporte, "titulo": titulo, "contenido": contenido, "indicadores": datos["indicadores"]}
+    return {"idreporte": idreporte, "titulo": titulo, "contenido": contenido,
+            "indicadores": datos["indicadores"], "modelo": modelo}
+
+
+# =====================================================================
+# MENÚ DEL ASISTENTE: consultas predefinidas (una sola llamada a Gemini cada una)
+# =====================================================================
+_REGLAS_COMUNES = """
+Reglas:
+- Responde en español, en Markdown, claro y directo. Máximo ~250 palabras.
+- Usa SOLO los datos proporcionados. No inventes productos, cifras ni proveedores.
+- Dinero con signo $ y dos decimales (ej. $12.50).
+- La fecha "de hoy" es la que viene en los datos.
+- Si no hay datos para alguna sección, dilo en una línea."""
+
+INSTRUCCIONES_DESCUENTOS = """Eres el asistente del operador de inventario de "Tienda Inteligente".
+Con los datos de lotes por caducar y sobreinventario, indica QUÉ DESCUENTOS APLICAR HOY.
+
+Formato:
+## Descuentos para hoy
+Tabla Markdown con columnas: Producto | Lote | Existencia | Caduca en | Descuento | Motivo.
+Ordena de más urgente a menos urgente. Usa el descuento sugerido de los datos (descuento_sugerido_pct).
+## Por qué
+2 o 3 viñetas explicando la prioridad (unidades que no se venderían a tiempo, valor en riesgo).
+## Requieren aprobación del gerente
+Lista de descuentos mayores a 30%, o "Ninguno".
+Termina con el valor total en riesgo que se busca rescatar.""" + _REGLAS_COMUNES
+
+INSTRUCCIONES_PEDIDOS = """Eres el asistente del operador de inventario de "Tienda Inteligente".
+Con los datos de pedido sugerido, entregas pendientes y desempeño de proveedores, indica QUÉ Y CUÁNTO PEDIR.
+
+Formato:
+## Pedido sugerido
+Agrupa por proveedor. Para cada proveedor, una tabla: Producto | Existencia | En camino | Pedir | Costo estimado.
+Marca con ⚠️ los productos urgentes (se acabarán antes de que llegue el pedido).
+## Cuándo pedir
+Indica qué se debe pedir hoy mismo y por qué, considerando los días reales de entrega (incluyen el retraso histórico).
+## Ojo con
+Proveedores que incumplen su contrato (puntualidad o surtido) y cómo afecta al pedido, o "Sin alertas".
+Las cantidades ya vienen redondeadas al tamaño de caja: no las cambies.
+Termina con el costo total estimado del pedido.""" + _REGLAS_COMUNES
+
+INSTRUCCIONES_STOCK = """Eres el asistente del operador de inventario de "Tienda Inteligente".
+Con los datos de stock actual y el historial de merma/quiebres, explica el ESTADO DEL INVENTARIO de la sucursal.
+
+Formato:
+## Resumen
+Una frase con el estado general (cuántos productos están agotados, bajos, en exceso o bien).
+## Atención inmediata
+Viñetas con productos agotados o con stock bajo (existencia y días de cobertura).
+## Exceso de inventario
+Viñetas con productos que no se alcanzarán a vender antes de caducar (unidades en riesgo).
+## Patrones
+Qué productos se piden de más o de menos según el historial (diagnóstico), o "Sin historial suficiente".
+## Acciones
+Lista numerada de 2 a 4 acciones concretas.""" + _REGLAS_COMUNES
+
+_CACHE_CONSULTAS: dict[tuple, dict] = {}
+_CACHE_SEGUNDOS = 10 * 60
+
+TIPOS_CONSULTA = {
+    "reporte":    "Reporte diario",
+    "descuentos": "¿Qué descuentos aplicar?",
+    "pedidos":    "¿Qué y cuánto pedir?",
+    "stock":      "Stock actual",
+}
+
+
+def _nombre_sucursal(idsucursal: int) -> str:
+    fila = db.consultar("SELECT RTRIM(nombre) AS nombre FROM sucursal WHERE idsucursal = ?", (idsucursal,))
+    return fila[0]["nombre"] if fila else str(idsucursal)
+
+
+def _datos_descuentos(idsucursal: int) -> dict:
+    return {
+        "fecha": logica.fecha_referencia().isoformat(),
+        "sucursal": _nombre_sucursal(idsucursal),
+        "lotes_por_caducar_7_dias": logica.productos_por_caducar(idsucursal, 7),
+        "sobreinventario": logica.sobreinventario(idsucursal),
+        "regla_descuento": "1 día: 50%, hasta 3 días: 30%, hasta 5 días: 15%, hasta 7 días: 10%; "
+                           "+10 puntos si al ritmo actual no se alcanza a vender (máximo 60%)",
+    }
+
+
+def _datos_pedidos(idsucursal: int) -> dict:
+    sugeridos = logica.sugerir_pedidos(idsucursal)
+    proveedores_ids = {s["idproveedor"] for s in sugeridos}
+    return {
+        "fecha": logica.fecha_referencia().isoformat(),
+        "sucursal": _nombre_sucursal(idsucursal),
+        "pedido_sugerido": sugeridos,
+        "entregas_pendientes": logica.entregas_pendientes(idsucursal),
+        "proveedores": [p for p in logica.retraso_proveedores()
+                        if p["idproveedor"] in proveedores_ids or p["incumple_contrato_en"]],
+    }
+
+
+def _datos_stock(idsucursal: int) -> dict:
+    return {
+        "fecha": logica.fecha_referencia().isoformat(),
+        "sucursal": _nombre_sucursal(idsucursal),
+        "stock_actual": logica.stock_actual(idsucursal),
+        "merma_y_quiebres_30_dias": logica.merma_y_quiebres(idsucursal, 30)[:10],
+    }
+
+
+def consulta_predefinida(tipo: str, idsucursal: int, idtrabajador: int | None = None,
+                         forzar: bool = False) -> dict:
+    """
+    Ejecuta una de las consultas del menú. Junta los datos con Python y hace una sola llamada a Gemini.
+    El resultado se guarda 10 minutos en memoria (por tipo, sucursal y fecha) para que repetir el clic
+    sea instantáneo y no gaste cuota; `forzar=True` lo regenera.
+    Regresa: titulo, contenido (Markdown), datos (para mostrar en tabla), modelo y si vino de caché.
+    """
+    if tipo not in TIPOS_CONSULTA:
+        raise ValueError(f"Tipo de consulta no válido. Opciones: {', '.join(TIPOS_CONSULTA)}")
+
+    clave = (tipo, idsucursal, logica.fecha_referencia())
+    guardado = _CACHE_CONSULTAS.get(clave)
+    if guardado and not forzar and time.time() - guardado["_creado"] < _CACHE_SEGUNDOS:
+        return {**{k: v for k, v in guardado.items() if k != "_creado"}, "desde_cache": True}
+
+    if tipo == "reporte":
+        r = generar_reporte(idsucursal, idtrabajador or logica.trabajador_por_defecto(idsucursal))
+        resultado = {"titulo": r["titulo"], "contenido": r["contenido"], "datos": r["indicadores"],
+                     "modelo": r["modelo"], "idreporte": r["idreporte"]}
+    else:
+        armar, instrucciones = {
+            "descuentos": (_datos_descuentos, INSTRUCCIONES_DESCUENTOS),
+            "pedidos":    (_datos_pedidos, INSTRUCCIONES_PEDIDOS),
+            "stock":      (_datos_stock, INSTRUCCIONES_STOCK),
+        }[tipo]
+        datos = armar(idsucursal)
+        texto, modelo = _generar_texto(instrucciones, datos)
+        tabla = {"descuentos": "lotes_por_caducar_7_dias", "pedidos": "pedido_sugerido", "stock": "stock_actual"}[tipo]
+        resultado = {"titulo": f"{TIPOS_CONSULTA[tipo]} - {datos['sucursal']} - {datos['fecha']}",
+                     "contenido": texto or "No se pudo generar la respuesta.",
+                     "datos": datos[tabla], "modelo": modelo, "idreporte": None}
+
+    resultado["tipo"] = tipo
+    _CACHE_CONSULTAS[clave] = {**resultado, "_creado": time.time()}
+    return {**resultado, "desde_cache": False}
+
+
+def _trabajador_de_sucursal(idsucursal: int) -> int:
+    """Autor por defecto del reporte si no se indica: el operador de la sucursal, o cualquier trabajador."""
+    fila = db.consultar("""
+        SELECT TOP (1) t.idtrabajador
+        FROM trabajador t JOIN puesto p ON p.idpuesto = t.idpuesto
+        WHERE t.activo = 1
+        ORDER BY CASE WHEN t.idsucursal = ? AND p.rol_sistema = 'operador' THEN 0
+                      WHEN t.idsucursal = ? THEN 1 ELSE 2 END, t.idtrabajador
+    """, (idsucursal, idsucursal))
+    return fila[0]["idtrabajador"] if fila else 1

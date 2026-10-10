@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tienda Inteligente · Panel de inventario</title>
+  <title>Tienda Inteligente · Panel de operación</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -17,185 +17,201 @@
       --brand-dark: #164537;
       --brand-soft: #e6efeb;
       --accent: #e8a33d;
-      /* estados (siempre con texto/ícono, nunca solo color) */
       --crit: #b42318;  --crit-bg: #fdecea;
       --warn: #a15c07;  --warn-bg: #fdf3e2;
-      --ok:   #1e7a46;  --ok-bg:   #e5f4ea;
+      --ok: #1e7a46;    --ok-bg: #e5f4ea;
       --info: #2b5c8a;  --info-bg: #e7eff7;
       --radius: 14px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
     body {
       font-family: "Plus Jakarta Sans", system-ui, sans-serif;
       background: var(--bg); color: var(--ink);
       display: grid; grid-template-columns: 232px 1fr; min-height: 100vh;
     }
-    button { font: inherit; cursor: pointer; }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
 
     /* ---------- Sidebar ---------- */
-    .sidebar {
-      background: var(--brand); color: #f4f1ec;
-      padding: 24px 16px; display: flex; flex-direction: column; gap: 28px;
-      position: sticky; top: 0; height: 100vh;
-    }
+    .sidebar { background: var(--brand); color: #f4f1ec; padding: 24px 16px; display: flex; flex-direction: column; gap: 28px; position: sticky; top: 0; height: 100vh; }
     .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; padding: 0 8px; }
-    .logo-mark { width: 34px; height: 34px; border-radius: 9px; background: var(--accent); display: grid; place-items: center; }
+    .logo-mark { width: 34px; height: 34px; border-radius: 9px; background: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
     .logo-mark svg { width: 19px; height: 19px; }
     .nav { display: flex; flex-direction: column; gap: 4px; }
-    .nav a {
-      display: flex; align-items: center; gap: 12px;
-      padding: 10px 12px; border-radius: 10px;
-      color: rgba(244,241,236,.78); text-decoration: none; font-size: 14px; font-weight: 500;
-    }
+    .nav a { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; color: rgba(244,241,236,.78); text-decoration: none; font-size: 14px; font-weight: 500; }
     .nav a svg { width: 18px; height: 18px; flex-shrink: 0; }
     .nav a:hover { background: rgba(244,241,236,.08); color: #fff; }
     .nav a.active { background: rgba(244,241,236,.14); color: #fff; font-weight: 600; }
-    .user {
-      margin-top: auto; display: flex; align-items: center; gap: 10px;
-      padding: 12px; border-radius: 12px; background: rgba(244,241,236,.08); font-size: 13px;
-    }
-    .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--ink); display: grid; place-items: center; font-weight: 700; }
+    .nav .sep { height: 1px; background: rgba(244,241,236,.14); margin: 8px 12px; }
+    .user { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 12px; background: rgba(244,241,236,.08); font-size: 13px; }
+    .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--ink); display: grid; place-items: center; font-weight: 700; flex-shrink: 0; }
     .user small { display: block; color: rgba(244,241,236,.65); font-size: 11.5px; }
+    .user .salir { margin-left: auto; background: none; border: none; color: rgba(244,241,236,.7); padding: 4px; border-radius: 6px; display: grid; }
+    .user .salir:hover { color: #fff; background: rgba(244,241,236,.1); }
+    .user .salir svg { width: 17px; height: 17px; }
 
     /* ---------- Main ---------- */
-    main { padding: 28px 32px 48px; min-width: 0; }
-    .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+    main { padding: 28px 32px 56px; min-width: 0; }
+    .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
     .topbar h1 { font-size: 24px; }
     .topbar p { color: var(--muted); font-size: 14px; margin-top: 4px; }
     .top-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-    select {
-      font: inherit; font-size: 14px; padding: 9px 12px; border-radius: 10px;
-      border: 1.5px solid var(--line); background: var(--panel); color: var(--ink);
-    }
-    .weather {
-      display: flex; align-items: center; gap: 10px; background: var(--panel);
-      border: 1.5px solid var(--line); border-radius: 10px; padding: 7px 12px; font-size: 13px;
-    }
-    .weather b { font-size: 16px; }
-    .weather small { color: var(--muted); display: block; font-size: 11.5px; }
+    select { font-size: 14px; padding: 9px 12px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--panel); color: var(--ink); max-width: 320px; }
+    .chip { font-size: 12.5px; font-weight: 600; padding: 7px 12px; border-radius: 999px; background: var(--panel); border: 1.5px solid var(--line); color: var(--muted); white-space: nowrap; }
+    .chip b { color: var(--ink); }
+    .chip.offline { color: var(--crit); border-color: #f3c2bc; background: var(--crit-bg); }
 
-    .btn {
-      border: none; border-radius: 10px; padding: 10px 16px; font-size: 14px; font-weight: 600;
-      background: var(--brand); color: #fff; display: inline-flex; align-items: center; gap: 8px;
-    }
+    .btn { border: none; border-radius: 10px; padding: 9px 14px; font-size: 13.5px; font-weight: 600; background: var(--brand); color: #fff; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
     .btn:hover { background: var(--brand-dark); }
     .btn.ghost { background: var(--brand-soft); color: var(--brand); }
     .btn.ghost:hover { background: #d7e6df; }
     .btn.sm { padding: 6px 10px; font-size: 12.5px; border-radius: 8px; }
-    .btn svg { width: 16px; height: 16px; }
+    .btn.icono { padding: 9px; }
+    .btn svg { width: 15px; height: 15px; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
 
     /* KPIs */
     .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
     .kpi { background: var(--panel); border-radius: var(--radius); padding: 18px 20px; }
     .kpi .label { font-size: 13px; color: var(--muted); font-weight: 500; }
-    .kpi .value { font-size: 28px; font-weight: 700; margin: 6px 0 4px; letter-spacing: -.5px; }
-    .kpi .delta { font-size: 12.5px; font-weight: 600; }
-    .delta.up-bad { color: var(--crit); }
-    .delta.down-good { color: var(--ok); }
-    .delta.neutral { color: var(--muted); }
+    .kpi .value { font-size: 28px; font-weight: 700; margin: 6px 0 4px; letter-spacing: -.5px; font-variant-numeric: tabular-nums; }
+    .kpi .sub { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+    .kpi .sub.mal { color: var(--crit); }
+    .kpi .sub.bien { color: var(--ok); }
 
-    /* Grid de paneles */
     .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
     .card { background: var(--panel); border-radius: var(--radius); padding: 20px; min-width: 0; }
-    .span-8 { grid-column: span 8; } .span-4 { grid-column: span 4; }
-    .span-6 { grid-column: span 6; } .span-12 { grid-column: span 12; }
-    .card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .span-12 { grid-column: span 12; } .span-8 { grid-column: span 8; } .span-7 { grid-column: span 7; }
+    .span-6 { grid-column: span 6; } .span-5 { grid-column: span 5; } .span-4 { grid-column: span 4; }
+    .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
     .card-head h2 { font-size: 16px; }
-    .card-head p { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+    .card-head p { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+
+    .seccion { display: flex; align-items: center; gap: 12px; margin: 34px 0 16px; }
+    .seccion h2 { font-size: 19px; }
+    .seccion::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+    .seccion .pill { font-size: 12px; font-weight: 600; color: var(--crit); background: var(--crit-bg); padding: 4px 10px; border-radius: 999px; }
 
     /* Tablas */
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 0 10px 10px; white-space: nowrap; }
-    td { padding: 11px 10px; border-top: 1px solid var(--line); white-space: nowrap; }
+    td { padding: 10px; border-top: 1px solid var(--line); white-space: nowrap; }
     td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    td.wrap { white-space: normal; min-width: 180px; }
+    td.wrap .badge { white-space: normal; line-height: 1.35; }
     .prod b { display: block; font-weight: 600; }
     .prod small { color: var(--muted); font-size: 12px; }
+    .vacio { color: var(--muted); font-size: 13.5px; padding: 18px 4px; text-align: center; }
 
-    .badge {
-      display: inline-flex; align-items: center; gap: 5px;
-      font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 999px;
-    }
+    .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
     .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
     .b-crit { background: var(--crit-bg); color: var(--crit); }
     .b-warn { background: var(--warn-bg); color: var(--warn); }
     .b-ok   { background: var(--ok-bg);   color: var(--ok); }
     .b-info { background: var(--info-bg); color: var(--info); }
+    .b-gris { background: var(--bg); color: var(--muted); }
 
-    /* Gráficas de barras (HTML puro) */
+    .filtros { display: flex; gap: 6px; flex-wrap: wrap; }
+    .filtros button { font-size: 12.5px; font-weight: 600; padding: 6px 11px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--panel); color: var(--muted); }
+    .filtros button.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+    /* Barras (HTML puro, una serie) */
     .chart { position: relative; }
-    .bars { display: flex; align-items: flex-end; gap: 10px; height: 180px; padding-bottom: 0; border-bottom: 1px solid var(--line); }
-    .bar-col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; cursor: default; }
-    .bar { width: 100%; max-width: 38px; background: var(--brand); border-radius: 4px 4px 0 0; transition: opacity .15s; }
-    .bar.current { background: var(--accent); }
+    .bars { display: flex; align-items: flex-end; gap: 10px; height: 170px; border-bottom: 1px solid var(--line); }
+    .bar-col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+    .bar { width: 100%; max-width: 44px; background: var(--brand); border-radius: 4px 4px 0 0; min-height: 2px; transition: opacity .15s; }
+    .bar.actual { background: var(--accent); }
     .bars:hover .bar { opacity: .45; }
     .bars .bar-col:hover .bar { opacity: 1; }
     .x-labels { display: flex; gap: 10px; margin-top: 8px; }
     .x-labels span { flex: 1; text-align: center; font-size: 11.5px; color: var(--muted); }
-    .tooltip {
-      position: absolute; pointer-events: none; background: var(--ink); color: #fff;
-      font-size: 12px; padding: 6px 10px; border-radius: 8px; white-space: nowrap;
-      transform: translate(-50%, -110%); opacity: 0; transition: opacity .1s;
-    }
+    .tooltip { position: absolute; pointer-events: none; background: var(--ink); color: #fff; font-size: 12px; padding: 6px 10px; border-radius: 8px; white-space: nowrap; transform: translate(-50%, -112%); opacity: 0; transition: opacity .1s; z-index: 2; }
     .tooltip.show { opacity: 1; }
-
-    .hbars { display: flex; flex-direction: column; gap: 12px; }
-    .hrow { display: grid; grid-template-columns: 110px 1fr 64px; align-items: center; gap: 10px; font-size: 13px; }
+    .hbars { display: flex; flex-direction: column; gap: 11px; }
+    .hrow { display: grid; grid-template-columns: minmax(90px, 160px) 1fr 74px; align-items: center; gap: 10px; font-size: 13px; }
+    .hrow .nombre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hrow.actual .nombre { font-weight: 700; }
     .htrack { height: 12px; background: var(--bg); border-radius: 4px; overflow: hidden; }
-    .hfill { height: 100%; background: var(--brand); border-radius: 0 4px 4px 0; }
+    .hfill { height: 100%; background: var(--brand); border-radius: 0 4px 4px 0; min-width: 2px; }
+    .hrow.actual .hfill { background: var(--accent); }
     .hrow .num { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 
-    /* Lista de sobreinventario */
+    /* Lista */
     .list { display: flex; flex-direction: column; }
     .li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 11px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
     .li:first-child { border-top: none; padding-top: 0; }
     .li small { display: block; color: var(--muted); font-size: 12px; }
-    .meter { width: 70px; height: 6px; background: var(--bg); border-radius: 4px; overflow: hidden; margin-top: 6px; margin-left: auto; }
-    .meter span { display: block; height: 100%; background: var(--crit); border-radius: 4px; }
 
-    /* Panel IA */
-    .ai {
-      background: linear-gradient(135deg, #1f5c4a 0%, #2a7560 100%); color: #f4f1ec;
-      display: flex; flex-direction: column; gap: 14px;
-    }
-    .ai .card-head h2 { color: #fff; }
-    .ai .card-head p { color: rgba(244,241,236,.7); }
-    .ai-box {
-      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
-      border-radius: 12px; padding: 14px; font-size: 13.5px; line-height: 1.6; min-height: 140px;
-    }
-    .ai-box ul { padding-left: 18px; }
-    .ai-box .placeholder { color: rgba(244,241,236,.6); }
-    .ai .btn { background: var(--accent); color: var(--ink); }
-    .ai .btn:hover { background: #f0b55a; }
-    .ai .btn.ghost { background: rgba(255,255,255,.12); color: #fff; }
-    .ai-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    .toast {
-      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
-      background: var(--ink); color: #fff; padding: 12px 18px; border-radius: 12px; font-size: 14px;
-      opacity: 0; transition: all .2s; pointer-events: none; z-index: 10;
-    }
+    /* Pedido sugerido por proveedor */
+    .prov-bloque { border: 1.5px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+    .prov-bloque:last-child { margin-bottom: 0; }
+    .prov-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+    .prov-head b { font-size: 14px; }
+    .prov-head small { color: var(--muted); font-size: 12px; display: block; }
+
+    /* Reportes */
+    .rep-layout { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 16px; align-items: start; }
+    .rep-lista { display: flex; flex-direction: column; gap: 8px; max-height: 640px; overflow-y: auto; }
+    .rep-item { text-align: left; border: 1.5px solid var(--line); background: var(--panel); border-radius: 12px; padding: 12px; color: var(--ink); display: flex; flex-direction: column; gap: 6px; }
+    .rep-item:hover { border-color: var(--brand-soft); }
+    .rep-item.sel { border-color: var(--brand); }
+    .rep-item b { font-size: 13.5px; }
+    .rep-item small { color: var(--muted); font-size: 12px; }
+    .md { font-size: 14.5px; line-height: 1.65; }
+    .md h1, .md h2, .md h3 { font-size: 15.5px; margin: 18px 0 8px; }
+    .md h1:first-child, .md h2:first-child, .md h3:first-child { margin-top: 0; }
+    .md p { margin: 8px 0; }
+    .md ul, .md ol { padding-left: 22px; margin: 8px 0; }
+    .md li { margin: 4px 0; }
+    .md table { margin: 10px 0; font-size: 13px; display: block; overflow-x: auto; }
+    .md th { background: var(--bg); padding: 8px 10px; }
+    .md td { padding: 8px 10px; }
+    .comentario { background: var(--info-bg); color: var(--info); border-radius: 12px; padding: 12px 14px; font-size: 13.5px; margin-top: 16px; }
+    textarea { width: 100%; min-height: 70px; padding: 10px 12px; border-radius: 10px; border: 1.5px solid var(--line); background: #fbfaf8; resize: vertical; font-size: 13.5px; }
+    textarea:focus, input[type=number]:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 4px rgba(31,92,74,.12); }
+    .acciones { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+
+    .cargando { display: flex; align-items: center; gap: 12px; color: var(--muted); padding: 40px 0; justify-content: center; font-size: 14px; }
+    .spinner { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--brand-soft); border-top-color: var(--brand); animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .aviso-error { background: var(--crit-bg); color: var(--crit); padding: 14px 16px; border-radius: 12px; font-size: 14px; margin-bottom: 16px; }
+
+    /* Modal */
+    .modal-fondo { position: fixed; inset: 0; background: rgba(29,27,25,.45); display: grid; place-items: center; padding: 16px; z-index: 20; }
+    .modal { background: var(--panel); border-radius: 18px; padding: 22px; width: 100%; max-width: 620px; max-height: 90vh; overflow-y: auto; }
+    .modal h3 { font-size: 17px; margin-bottom: 4px; }
+    .modal > p { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+    .modal input[type=number] { width: 84px; padding: 7px 9px; border-radius: 8px; border: 1.5px solid var(--line); text-align: right; }
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--ink); color: #fff; padding: 12px 18px; border-radius: 12px; font-size: 14px; opacity: 0; transition: all .2s; pointer-events: none; z-index: 30; max-width: calc(100% - 32px); }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.error { background: var(--crit); }
 
     /* ---------- Responsive ---------- */
-    @media (max-width: 1100px) {
+    @media (max-width: 1150px) {
       .kpis { grid-template-columns: repeat(2, 1fr); }
-      .span-8, .span-4, .span-6 { grid-column: span 12; }
+      .span-8, .span-7, .span-6, .span-5, .span-4 { grid-column: span 12; }
+      .rep-layout { grid-template-columns: 1fr; }
+      .rep-lista { max-height: 320px; }
     }
     @media (max-width: 760px) {
       body { grid-template-columns: 1fr; }
-      .sidebar { position: static; height: auto; flex-direction: row; align-items: center; padding: 12px 16px; overflow-x: auto; gap: 16px; }
+      .sidebar { position: static; height: auto; flex-direction: row; align-items: center; padding: 12px 16px; overflow-x: auto; gap: 14px; }
       .nav { flex-direction: row; }
-      .nav a span, .user { display: none; }
+      .nav .sep { display: none; }
+      .nav a span, .logo span, .user > div:not(.avatar), .user .avatar { display: none; }
+      .user { margin-top: 0; margin-left: auto; padding: 4px; background: none; }
       main { padding: 20px 16px 40px; }
-      .kpis { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .kpis { gap: 10px; }
+      .kpi { padding: 14px; }
       .kpi .value { font-size: 22px; }
+      select { max-width: 100%; }
     }
   </style>
 </head>
 <body>
 
-  <!-- ===== Sidebar ===== -->
   <aside class="sidebar">
     <div class="logo">
       <div class="logo-mark">
@@ -204,350 +220,674 @@
       <span>Tienda Inteligente</span>
     </div>
     <nav class="nav">
-      <a href="#" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><span>Panel</span></a>
-      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg><span>Inventario</span></a>
-      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h11"/><path d="M9 12h11"/><path d="M9 19h11"/><path d="M4 5h.01M4 12h.01M4 19h.01"/></svg><span>Pedidos</span></a>
-      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg><span>Entregas</span></a>
-      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg><span>Mermas</span></a>
-      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg><span>Reportes</span></a>
+      <a href="#inventario" data-vista="inventario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg><span>Inventario y mermas</span></a>
+      <a href="#pedidos" data-vista="pedidos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg><span>Pedidos y entregas</span></a>
+      <a href="#reportes" data-vista="reportes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg><span>Reportes</span></a>
+      <div class="sep"></div>
+      <a href="asistente.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z"/><path d="M19 17l.8 2.2L22 20l-2.2.8L19 23l-.8-2.2L16 20l2.2-.8z"/></svg><span>Asistente IA</span></a>
     </nav>
     <div class="user">
       <div class="avatar" id="avatar">OP</div>
-      <div><span id="nombreUsuario">Operador</span><small>Operador de inventario</small></div>
+      <div><span id="nombreUsuario">Invitado</span><small id="rolUsuario">Sin sesión</small></div>
+      <button class="salir" id="btnSalir" title="Cerrar sesión" aria-label="Cerrar sesión">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+      </button>
     </div>
   </aside>
 
-  <!-- ===== Contenido ===== -->
   <main>
     <header class="topbar">
       <div>
-        <h1>Panel de inventario</h1>
-        <p id="fechaHoy">—</p>
+        <h1 id="tituloVista">Inventario y mermas</h1>
+        <p id="subVista">Existencias, caducidades y pérdidas de la sucursal</p>
       </div>
       <div class="top-actions">
-        <select id="sucursal" aria-label="Sucursal"></select>
-        <div class="weather" id="clima">
-          <span id="climaIcono">☀️</span>
-          <div><b id="climaTemp">--°</b><small id="climaDesc">Cargando clima…</small></div>
-        </div>
+        <select id="sucursal" aria-label="Sucursal"><option>Cargando…</option></select>
+        <span class="chip" id="chipFecha">Conectando…</span>
+        <button class="btn ghost icono" id="btnRecargar" title="Actualizar datos" aria-label="Actualizar datos">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+        </button>
       </div>
     </header>
 
-    <!-- KPIs -->
-    <section class="kpis" id="kpis"></section>
+    <div id="errorGlobal" class="aviso-error" hidden></div>
 
-    <section class="grid">
-      <!-- Alertas de caducidad -->
-      <article class="card span-8">
-        <div class="card-head">
-          <div>
-            <h2>Productos por caducar</h2>
-            <p>Descuento sugerido según días restantes e inventario</p>
+    <!-- =============== INVENTARIO Y MERMAS =============== -->
+    <section id="vista-inventario" class="vista">
+      <div class="kpis" id="kpisInv"></div>
+
+      <div class="grid">
+        <article class="card span-12">
+          <div class="card-head">
+            <div><h2>Stock actual</h2><p>Existencia por producto, cobertura según la venta diaria y estado</p></div>
+            <div class="filtros" id="filtroStock">
+              <button class="on" data-f="">Todos</button><button data-f="agotado">Agotado</button>
+              <button data-f="bajo">Bajo</button><button data-f="exceso">Exceso</button><button data-f="ok">OK</button>
+            </div>
           </div>
-          <button class="btn ghost sm">Ver todos</button>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Producto</th><th>Lote</th><th class="num">Existencia</th><th>Caduca</th><th class="num">Desc. sugerido</th><th></th></tr></thead>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Producto</th><th class="num">Existencia</th><th class="num">Venta/día</th><th class="num">Cobertura</th><th>Próx. caducidad</th><th class="num">En riesgo</th><th class="num">Valor</th><th>Estado</th></tr></thead>
+            <tbody id="tablaStock"></tbody>
+          </table></div>
+        </article>
+
+        <article class="card span-12">
+          <div class="card-head">
+            <div><h2>Por caducar · descuentos sugeridos</h2><p>Lotes que caducan en los próximos 7 días. El descuento sube si al ritmo actual no se alcanza a vender.</p></div>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Producto</th><th>Lote</th><th class="num">Existencia</th><th>Caduca</th><th class="num">No se venderían</th><th class="num">Valor en riesgo</th><th class="num">Descuento</th><th></th></tr></thead>
             <tbody id="tablaCaducidad"></tbody>
-          </table>
-        </div>
-      </article>
+          </table></div>
+        </article>
 
-      <!-- Reporte IA -->
-      <article class="card span-4 ai">
-        <div class="card-head">
-          <div>
-            <h2>Reporte con IA</h2>
-            <p>Resumen del día generado por Gemini</p>
-          </div>
-        </div>
-        <div class="ai-box" id="aiBox">
-          <p class="placeholder">Presiona "Generar reporte" para obtener un resumen de riesgos de merma, sobreinventario y entregas, con recomendaciones para hoy.</p>
-        </div>
-        <div class="ai-actions">
-          <button class="btn" id="btnGenerar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z"/></svg>
-            Generar reporte
-          </button>
-          <button class="btn ghost" id="btnEnviar" disabled style="opacity:.5">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
-            Enviar al gerente
-          </button>
-        </div>
-      </article>
+        <article class="card span-6">
+          <div class="card-head"><div><h2>Sobreinventario</h2><p>Más existencia de la que se venderá antes de caducar</p></div></div>
+          <div class="list" id="listaSobre"></div>
+        </article>
 
-      <!-- Entregas -->
-      <article class="card span-8">
-        <div class="card-head">
-          <div>
-            <h2>Pedidos y entregas</h2>
-            <p>Llegada estimada = ruta + retraso histórico del proveedor + clima</p>
+        <article class="card span-6">
+          <div class="card-head"><div><h2>Transferencias sugeridas</h2><p>Mover producto entre sucursales antes de que caduque</p></div></div>
+          <div class="list" id="listaTransf"></div>
+        </article>
+      </div>
+
+      <div class="seccion"><h2>Mermas</h2><span class="pill" id="pillMerma" hidden></span></div>
+
+      <div class="grid">
+        <article class="card span-6">
+          <div class="card-head"><div><h2>Merma por semana</h2><p>Costo de la merma registrada · últimas 8 semanas</p></div></div>
+          <div class="chart" id="chartSemanal">
+            <div class="bars" id="bars"></div>
+            <div class="x-labels" id="xLabels"></div>
+            <div class="tooltip" id="tooltip"></div>
           </div>
-          <button class="btn sm">+ Nuevo pedido</button>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Pedido</th><th>Proveedor</th><th>Prometida</th><th>Estimada</th><th>Estado</th><th></th></tr></thead>
+        </article>
+
+        <article class="card span-6">
+          <div class="card-head"><div><h2>Merma por causa</h2><p>Costo · últimos 30 días</p></div></div>
+          <div class="hbars" id="hbarsCausa"></div>
+        </article>
+
+        <article class="card span-5">
+          <div class="card-head"><div><h2>Productos con más merma</h2><p>Costo · últimos 30 días</p></div></div>
+          <div class="hbars" id="hbarsProducto"></div>
+        </article>
+
+        <article class="card span-7">
+          <div class="card-head"><div><h2>¿Se pide de más o de menos?</h2><p>Historial diario: expirado, dañado y horas sin producto · 30 días</p></div></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Producto</th><th class="num">Vendido</th><th class="num">Expirado</th><th class="num">Dañado</th><th class="num">Horas sin stock</th><th class="num">% merma</th><th>Diagnóstico</th></tr></thead>
+            <tbody id="tablaQuiebres"></tbody>
+          </table></div>
+        </article>
+
+        <article class="card span-12">
+          <div class="card-head"><div><h2>Comparativo entre sucursales</h2><p>Costo de merma · últimos 30 días. La sucursal seleccionada aparece resaltada.</p></div></div>
+          <div class="hbars" id="hbarsSucursales"></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- =============== PEDIDOS Y ENTREGAS =============== -->
+    <section id="vista-pedidos" class="vista" hidden>
+      <div class="kpis" id="kpisPed"></div>
+
+      <div class="grid">
+        <article class="card span-12">
+          <div class="card-head"><div><h2>Entregas pendientes</h2><p>Llegada estimada = fecha prometida + retraso histórico del proveedor</p></div></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Pedido</th><th>Proveedor</th><th>Pedido el</th><th>Prometida</th><th>Estimada</th><th>Estado</th><th></th></tr></thead>
             <tbody id="tablaEntregas"></tbody>
-          </table>
-        </div>
-      </article>
+          </table></div>
+        </article>
 
-      <!-- Sobreinventario -->
-      <article class="card span-4">
-        <div class="card-head">
-          <div>
-            <h2>Sobreinventario</h2>
-            <p>Cobertura mayor a la vida útil restante</p>
-          </div>
-        </div>
-        <div class="list" id="listaSobre"></div>
-      </article>
+        <article class="card span-7">
+          <div class="card-head"><div><h2>Pedido sugerido</h2><p>Punto de reorden con la entrega real del proveedor; cantidades en múltiplos de caja</p></div></div>
+          <div id="pedidoSugerido"></div>
+        </article>
 
-      <!-- Merma semanal -->
-      <article class="card span-6">
-        <div class="card-head">
-          <div>
-            <h2>Merma por semana</h2>
-            <p>Valor en pesos · últimas 8 semanas</p>
-          </div>
-        </div>
-        <div class="chart" id="chartSemanal">
-          <div class="bars" id="bars"></div>
-          <div class="x-labels" id="xLabels"></div>
-          <div class="tooltip" id="tooltip"></div>
-        </div>
-      </article>
+        <article class="card span-5">
+          <div class="card-head"><div><h2>Desempeño de proveedores</h2><p>Real contra lo que dice su contrato</p></div></div>
+          <div class="list" id="listaProveedores"></div>
+        </article>
 
-      <!-- Merma por causa -->
-      <article class="card span-6">
-        <div class="card-head">
-          <div>
-            <h2>Merma por causa</h2>
-            <p>Valor en pesos · este mes</p>
+        <article class="card span-12">
+          <div class="card-head"><div><h2>Historial de pedidos</h2><p>Últimos 30 días</p></div></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Pedido</th><th>Proveedor</th><th>Productos</th><th>Pedido el</th><th>Llegó</th><th class="num">Retraso</th><th class="num">Pedidas</th><th class="num">Recibidas</th><th class="num">Costo</th><th>Estado</th></tr></thead>
+            <tbody id="tablaHistorial"></tbody>
+          </table></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- =============== REPORTES =============== -->
+    <section id="vista-reportes" class="vista" hidden>
+      <div class="rep-layout">
+        <article class="card">
+          <div class="card-head" style="margin-bottom:10px">
+            <div><h2>Reportes</h2><p>De la sucursal seleccionada</p></div>
           </div>
-        </div>
-        <div class="hbars" id="hbars"></div>
-      </article>
+          <button class="btn" id="btnGenerarReporte" style="width:100%;justify-content:center;margin-bottom:12px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z"/></svg>
+            Generar reporte del día con IA
+          </button>
+          <div class="filtros" id="filtroReportes" style="margin-bottom:12px">
+            <button class="on" data-f="">Todos</button><button data-f="borrador">Borrador</button>
+            <button data-f="enviado">Enviado</button><button data-f="revisado">Revisado</button>
+          </div>
+          <div class="rep-lista" id="listaReportes"></div>
+        </article>
+
+        <article class="card" id="detalleReporte">
+          <div class="vacio" style="padding:80px 20px">Selecciona un reporte o genera el del día.</div>
+        </article>
+      </div>
     </section>
   </main>
+
+  <!-- Modal: registrar llegada -->
+  <div class="modal-fondo" id="modalLlegada" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+      <h3 id="modalTitulo">Registrar llegada</h3>
+      <p id="modalSub">Indica cuánto llegó y cuánto venía dañado. Lo dañado se registra como merma del proveedor.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Producto</th><th class="num">Pedido</th><th class="num">Recibido</th><th class="num">Dañado</th></tr></thead>
+        <tbody id="modalLineas"></tbody>
+      </table></div>
+      <div class="acciones" style="justify-content:flex-end">
+        <button class="btn ghost" id="modalCancelar">Cancelar</button>
+        <button class="btn" id="modalConfirmar">Confirmar llegada</button>
+      </div>
+    </div>
+  </div>
 
   <div class="toast" id="toast"></div>
 
   <script>
-    /*
-     * =====================================================
-     *  DATOS DE PRUEBA
-     * =====================================================
-     * Cuando el backend (Python) esté listo, reemplaza este objeto por:
-     *
-     *   const res = await fetch(`/api/dashboard?sucursal=${idSucursal}`);
-     *   const DATOS = await res.json();
-     *
-     * El backend debe regresar la misma estructura que este objeto.
-     */
-    const DATOS = {
-      usuario: { nombre: 'Ian Espinosa', iniciales: 'IE' },
-      sucursales: [
-        { id: 1, nombre: 'Sucursal Centro', lat: 19.4326, lon: -99.1332 },
-        { id: 2, nombre: 'Sucursal Norte',  lat: 19.5045, lon: -99.1470 },
-        { id: 3, nombre: 'Sucursal Sur',    lat: 19.3133, lon: -99.1557 }
-      ],
-      kpis: [
-        { label: 'Valor en riesgo de merma', value: '$8,420', delta: '+12% vs semana pasada', tipo: 'up-bad' },
-        { label: 'Productos por caducar (≤7 días)', value: '23', delta: '6 caducan en 48 h', tipo: 'up-bad' },
-        { label: 'Productos con sobreinventario', value: '9', delta: '−3 vs semana pasada', tipo: 'down-good' },
-        { label: 'Entregas en camino', value: '4', delta: '1 con retraso', tipo: 'neutral' }
-      ],
-      caducidad: [
-        { producto: 'Yogurt natural 1 L',   cat: 'Lácteos',    lote: 'L-2291', existencia: 64, dias: 1, desc: 50 },
-        { producto: 'Pan de caja integral', cat: 'Panadería',  lote: 'P-0874', existencia: 38, dias: 2, desc: 30 },
-        { producto: 'Pechuga de pollo kg',  cat: 'Carnes',     lote: 'C-1120', existencia: 22, dias: 3, desc: 30 },
-        { producto: 'Leche entera 1 L',     cat: 'Lácteos',    lote: 'L-2305', existencia: 120, dias: 5, desc: 15 },
-        { producto: 'Queso panela 400 g',   cat: 'Lácteos',    lote: 'L-2288', existencia: 31, dias: 6, desc: 10 }
-      ],
-      entregas: [
-        { pedido: 'PED-1043', proveedor: 'Lácteos del Valle', prometida: 'Hoy 10:00',   estimada: 'Hoy 13:30',    estado: 'retraso' },
-        { pedido: 'PED-1044', proveedor: 'Panificadora Sol',  prometida: 'Hoy 16:00',   estimada: 'Hoy 16:10',    estado: 'camino' },
-        { pedido: 'PED-1045', proveedor: 'Cárnicos MX',       prometida: 'Mañana 08:00',estimada: 'Mañana 08:45', estado: 'camino' },
-        { pedido: 'PED-1041', proveedor: 'Frutas Express',    prometida: 'Ayer 09:00',  estimada: 'Llegó 09:20',  estado: 'recibido' }
-      ],
-      sobreinventario: [
-        { producto: 'Yogurt natural 1 L',   cobertura: 9,  vida: 1 },
-        { producto: 'Crema ácida 200 ml',   cobertura: 14, vida: 8 },
-        { producto: 'Tortilla de harina',   cobertura: 11, vida: 6 },
-        { producto: 'Jugo de naranja 1 L',  cobertura: 18, vida: 12 }
-      ],
-      mermaSemanal: [
-        { semana: 'S33', valor: 6200 }, { semana: 'S34', valor: 5800 },
-        { semana: 'S35', valor: 7100 }, { semana: 'S36', valor: 6600 },
-        { semana: 'S37', valor: 5400 }, { semana: 'S38', valor: 6900 },
-        { semana: 'S39', valor: 7500 }, { semana: 'S40', valor: 8420 }
-      ],
-      mermaCausa: [
-        { causa: 'Caducidad',  valor: 14200 },
-        { causa: 'Daño',       valor: 5100 },
-        { causa: 'Proveedor',  valor: 3800 },
-        { causa: 'Robo',       valor: 1900 },
-        { causa: 'Otro',       valor: 900 }
-      ]
-    };
-
+    // Si la página la sirve el backend (puerto 8000) se usa la misma dirección; si se abre con doble clic, el backend local.
+    const API = (location.protocol.startsWith('http') && location.port === '8000') ? '' : 'http://localhost:8000';
     const $ = id => document.getElementById(id);
-    const pesos = n => '$' + n.toLocaleString('es-MX');
 
-    // ---------- Encabezado ----------
-    $('fechaHoy').textContent = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    $('nombreUsuario').textContent = DATOS.usuario.nombre;
-    $('avatar').textContent = DATOS.usuario.iniciales;
-    $('sucursal').innerHTML = DATOS.sucursales.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('');
-
-    // ---------- KPIs ----------
-    $('kpis').innerHTML = DATOS.kpis.map(k => `
-      <div class="kpi">
-        <div class="label">${k.label}</div>
-        <div class="value">${k.value}</div>
-        <div class="delta ${k.tipo}">${k.delta}</div>
-      </div>`).join('');
-
-    // ---------- Caducidad ----------
-    const badgeDias = d => d <= 2 ? `<span class="badge b-crit">${d} día${d > 1 ? 's' : ''}</span>`
-                         : d <= 4 ? `<span class="badge b-warn">${d} días</span>`
-                         : `<span class="badge b-info">${d} días</span>`;
-    $('tablaCaducidad').innerHTML = DATOS.caducidad.map(p => `
-      <tr>
-        <td class="prod"><b>${p.producto}</b><small>${p.cat}</small></td>
-        <td>${p.lote}</td>
-        <td class="num">${p.existencia}</td>
-        <td>${badgeDias(p.dias)}</td>
-        <td class="num"><b>${p.desc}%</b></td>
-        <td><button class="btn sm ghost" onclick="toast('Descuento de ${p.desc}% aplicado a ${p.producto}')">Aplicar</button></td>
-      </tr>`).join('');
-
-    // ---------- Entregas ----------
-    const ESTADOS = {
-      retraso:  '<span class="badge b-crit">Con retraso</span>',
-      camino:   '<span class="badge b-info">En camino</span>',
-      recibido: '<span class="badge b-ok">Recibido</span>'
+    const VISTAS = {
+      inventario: ['Inventario y mermas', 'Existencias, caducidades y pérdidas de la sucursal'],
+      pedidos:    ['Pedidos y entregas', 'Qué pedir, qué viene en camino y cómo cumplen los proveedores'],
+      reportes:   ['Reportes', 'Reportes diarios generados con IA para el gerente'],
     };
-    $('tablaEntregas').innerHTML = DATOS.entregas.map(e => `
-      <tr>
-        <td><b>${e.pedido}</b></td>
-        <td>${e.proveedor}</td>
-        <td>${e.prometida}</td>
-        <td>${e.estimada}</td>
-        <td>${ESTADOS[e.estado]}</td>
-        <td>${e.estado !== 'recibido'
-              ? `<button class="btn sm ghost" onclick="toast('Llegada de ${e.pedido} registrada')">Marcar llegada</button>`
-              : ''}</td>
-      </tr>`).join('');
+    const estado = { vista: 'inventario', cache: {}, stock: [], filtroStock: '', reportes: [], filtroRep: '', repSel: null, pedidoModal: null };
 
-    // ---------- Sobreinventario ----------
-    $('listaSobre').innerHTML = DATOS.sobreinventario.map(s => {
-      const exceso = Math.min(100, Math.round((s.cobertura - s.vida) / s.cobertura * 100));
-      return `
-        <div class="li">
-          <div><b>${s.producto}</b><small>Cobertura ${s.cobertura} días · vida útil ${s.vida} días</small></div>
-          <div style="text-align:right">
-            <span class="badge b-warn">+${s.cobertura - s.vida} días</span>
-            <div class="meter"><span style="width:${exceso}%"></span></div>
-          </div>
-        </div>`;
-    }).join('');
-
-    // ---------- Merma semanal (barras verticales) ----------
-    const maxSem = Math.max(...DATOS.mermaSemanal.map(d => d.valor));
-    $('bars').innerHTML = DATOS.mermaSemanal.map((d, i) => `
-      <div class="bar-col" data-i="${i}">
-        <div class="bar ${i === DATOS.mermaSemanal.length - 1 ? 'current' : ''}" style="height:${d.valor / maxSem * 100}%"></div>
-      </div>`).join('');
-    $('xLabels').innerHTML = DATOS.mermaSemanal.map(d => `<span>${d.semana}</span>`).join('');
-
-    const tip = $('tooltip');
-    $('bars').querySelectorAll('.bar-col').forEach(col => {
-      col.addEventListener('mouseenter', () => {
-        const d = DATOS.mermaSemanal[col.dataset.i];
-        const bar = col.querySelector('.bar');
-        const chartBox = $('chartSemanal').getBoundingClientRect();
-        const barBox = bar.getBoundingClientRect();
-        tip.innerHTML = `<b>${d.semana}</b> · ${pesos(d.valor)}`;
-        tip.style.left = (barBox.left - chartBox.left + barBox.width / 2) + 'px';
-        tip.style.top = (barBox.top - chartBox.top) + 'px';
-        tip.classList.add('show');
-      });
-      col.addEventListener('mouseleave', () => tip.classList.remove('show'));
-    });
-
-    // ---------- Merma por causa (barras horizontales) ----------
-    const maxCausa = Math.max(...DATOS.mermaCausa.map(d => d.valor));
-    $('hbars').innerHTML = DATOS.mermaCausa.map(d => `
-      <div class="hrow" title="${d.causa}: ${pesos(d.valor)}">
-        <span>${d.causa}</span>
-        <div class="htrack"><div class="hfill" style="width:${d.valor / maxCausa * 100}%"></div></div>
-        <span class="num">${pesos(d.valor)}</span>
-      </div>`).join('');
-
-    // ---------- Clima en tiempo real (Open-Meteo, gratis y sin API key) ----------
-    const ICONOS = { 0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️', 45: '🌫️', 48: '🌫️', 51: '🌦️', 61: '🌧️', 63: '🌧️', 65: '🌧️', 80: '🌦️', 81: '🌧️', 82: '⛈️', 95: '⛈️' };
-    const DESC = { 0: 'Despejado', 1: 'Mayormente despejado', 2: 'Parcialmente nublado', 3: 'Nublado', 45: 'Niebla', 48: 'Niebla', 51: 'Llovizna', 61: 'Lluvia ligera', 63: 'Lluvia', 65: 'Lluvia fuerte', 80: 'Chubascos', 81: 'Chubascos', 82: 'Tormenta', 95: 'Tormenta eléctrica' };
-
-    async function cargarClima() {
-      const suc = DATOS.sucursales.find(s => s.id == $('sucursal').value);
-      try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${suc.lat}&longitude=${suc.lon}&current=temperature_2m,weather_code&timezone=auto`;
-        const r = await fetch(url);
-        const j = await r.json();
-        const code = j.current.weather_code;
-        $('climaTemp').textContent = Math.round(j.current.temperature_2m) + '°C';
-        $('climaIcono').textContent = ICONOS[code] || '🌡️';
-        $('climaDesc').textContent = DESC[code] || 'Clima actual';
-      } catch {
-        $('climaTemp').textContent = '--°';
-        $('climaDesc').textContent = 'Clima no disponible';
-      }
+    // ---------- Usuario (lo guarda login.html) ----------
+    let usuario = null;
+    try { usuario = JSON.parse(localStorage.getItem('ti_usuario') || 'null'); } catch { usuario = null; }
+    if (usuario) {
+      $('nombreUsuario').textContent = `${usuario.nombre} ${usuario.apellido || ''}`.trim();
+      $('rolUsuario').textContent = usuario.rol_sistema === 'gerente' ? 'Gerente' : 'Operador de inventario';
+      $('avatar').textContent = ((usuario.nombre || 'O')[0] + (usuario.apellido || 'P')[0]).toUpperCase();
     }
-    $('sucursal').addEventListener('change', () => {
-      cargarClima();
-      // Aquí también recargarías DATOS del backend para la nueva sucursal
-    });
-    cargarClima();
-
-    // ---------- Reporte con IA ----------
-    /*
-     * Conexión real:
-     *   const r = await fetch('/api/reporte', { method: 'POST', body: JSON.stringify({ sucursal }) });
-     *   const { html } = await r.json();   // el backend arma el prompt con los datos y llama a Gemini
-     */
-    $('btnGenerar').addEventListener('click', async () => {
-      const box = $('aiBox');
-      box.innerHTML = '<p class="placeholder">Analizando inventario, entregas y clima…</p>';
-      await new Promise(r => setTimeout(r, 1200)); // simulación
-      box.innerHTML = `
-        <p><b>Resumen de hoy</b></p>
-        <ul>
-          <li><b>Riesgo alto:</b> 64 yogurts caducan mañana y hay sobreinventario. Aplica 50% hoy y colócalos al frente.</li>
-          <li><b>Proveedor:</b> Lácteos del Valle viene con 3.5 h de retraso (su promedio es 1.5 h). Considera un proveedor alterno para la leche.</li>
-          <li><b>Clima:</b> se esperan temperaturas altas; revisa la cadena de frío y sube el pedido de bebidas.</li>
-          <li><b>Merma:</b> la caducidad es el 55% de la merma del mes. Reduce el pedido de crema ácida un 30%.</li>
-        </ul>`;
-      const env = $('btnEnviar');
-      env.disabled = false; env.style.opacity = 1;
+    $('btnSalir').addEventListener('click', () => {
+      try { localStorage.removeItem('ti_usuario'); } catch {}
+      location.href = 'login.html';
     });
 
-    $('btnEnviar').addEventListener('click', () => {
-      // Conexión real: fetch('/api/reporte/enviar', { method: 'POST', ... })
-      toast('Reporte enviado al gerente');
-    });
+    // ---------- Utilidades ----------
+    async function api(ruta, opciones = {}) {
+      const res = await fetch(API + ruta, { headers: { 'Content-Type': 'application/json' }, ...opciones });
+      const datos = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(datos.detail ? (typeof datos.detail === 'string' ? datos.detail : 'Datos no válidos') : `Error ${res.status}`);
+      return datos;
+    }
+    const esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const dinero = n => '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const numero = n => (n === null || n === undefined) ? '—' : Number(n).toLocaleString('es-MX', { maximumFractionDigits: 1 });
+    const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    function fecha(iso, conHora = false) {
+      if (!iso) return '—';
+      // Las fechas sin hora ("2026-09-30") se leen como hora local para que no se recorran un día
+      const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso + 'T00:00:00' : iso);
+      if (isNaN(d)) return esc(iso);
+      let t = `${d.getDate()} ${MESES[d.getMonth()]}`;
+      if (conHora) t += ` ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      return t;
+    }
+    const vacio = (cols, texto) => `<tr><td colspan="${cols}" class="vacio">${texto}</td></tr>`;
+    const idSuc = () => Number($('sucursal').value) || 1;
+    const idTrab = () => usuario?.idtrabajador ?? null;
 
-    // ---------- Toast ----------
-    function toast(msg) {
+    function toast(msg, error = false) {
       const t = $('toast');
       t.textContent = msg;
+      t.classList.toggle('error', error);
       t.classList.add('show');
       clearTimeout(t._t);
-      t._t = setTimeout(() => t.classList.remove('show'), 2200);
+      t._t = setTimeout(() => t.classList.remove('show'), 2800);
     }
+    function cargando(el, cols) {
+      el.innerHTML = cols ? vacio(cols, '<span class="spinner" style="display:inline-block;width:16px;height:16px;border-width:2px;vertical-align:middle"></span> Cargando…')
+                          : '<div class="cargando"><div class="spinner"></div>Cargando…</div>';
+    }
+
+    // Markdown sencillo para los reportes
+    function enLinea(t) {
+      return esc(t).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                   .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
+    }
+    function markdown(texto) {
+      const L = String(texto || '').replace(/\r/g, '').split('\n');
+      let html = '', lista = null, i = 0;
+      const cerrar = () => { if (lista) { html += `</${lista}>`; lista = null; } };
+      while (i < L.length) {
+        const t = L[i].trim(); let m;
+        if (/^\|.*\|$/.test(t) && i + 1 < L.length && /^\|?\s*:?-{2,}/.test(L[i + 1].trim())) {
+          cerrar();
+          const cel = s => s.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+          html += '<table><thead><tr>' + cel(t).map(c => `<th>${enLinea(c)}</th>`).join('') + '</tr></thead><tbody>';
+          i += 2;
+          while (i < L.length && /^\|.*\|$/.test(L[i].trim())) { html += '<tr>' + cel(L[i]).map(c => `<td>${enLinea(c)}</td>`).join('') + '</tr>'; i++; }
+          html += '</tbody></table>'; continue;
+        }
+        if ((m = t.match(/^(#{1,3})\s+(.*)$/))) { cerrar(); html += `<h${m[1].length}>${enLinea(m[2])}</h${m[1].length}>`; }
+        else if ((m = t.match(/^[-*•]\s+(.*)$/))) { if (lista !== 'ul') { cerrar(); html += '<ul>'; lista = 'ul'; } html += `<li>${enLinea(m[1])}</li>`; }
+        else if ((m = t.match(/^\d+[.)]\s+(.*)$/))) { if (lista !== 'ol') { cerrar(); html += '<ol>'; lista = 'ol'; } html += `<li>${enLinea(m[1])}</li>`; }
+        else if (t === '') cerrar();
+        else { cerrar(); html += `<p>${enLinea(t)}</p>`; }
+        i++;
+      }
+      cerrar();
+      return html;
+    }
+
+    function kpis(el, items) {
+      el.innerHTML = items.map(k => `
+        <div class="kpi"><div class="label">${k.label}</div><div class="value">${k.value}</div>
+        <div class="sub ${k.tono || ''}">${k.sub || '&nbsp;'}</div></div>`).join('');
+    }
+
+    function barrasHorizontales(el, filas, { nombre, valor, resaltar } = {}) {
+      if (!filas.length) { el.innerHTML = '<div class="vacio">Sin mermas registradas en este periodo.</div>'; return; }
+      const max = Math.max(...filas.map(f => Number(f[valor]) || 0)) || 1;
+      el.innerHTML = filas.map(f => `
+        <div class="hrow ${resaltar && resaltar(f) ? 'actual' : ''}" title="${esc(f[nombre])}: ${dinero(f[valor])}">
+          <span class="nombre">${esc(f[nombre])}</span>
+          <div class="htrack"><div class="hfill" style="width:${(Number(f[valor]) || 0) / max * 100}%"></div></div>
+          <span class="num">${dinero(f[valor])}</span>
+        </div>`).join('');
+    }
+
+    // ---------- INVENTARIO Y MERMAS ----------
+    const ESTADO_STOCK = { agotado: 'b-crit', bajo: 'b-warn', exceso: 'b-info', ok: 'b-ok' };
+
+    function pintarStock() {
+      const filas = estado.stock.filter(s => !estado.filtroStock || s.estado === estado.filtroStock);
+      $('tablaStock').innerHTML = filas.length ? filas.map(s => `
+        <tr>
+          <td class="prod"><b>${esc(s.producto)}</b><small>${esc(s.sku || '')} · ${esc(s.categoria)}</small></td>
+          <td class="num">${numero(s.existencia)}</td>
+          <td class="num">${numero(s.venta_promedio_diaria)}</td>
+          <td class="num">${s.dias_cobertura === null || !s.existencia ? '—' : numero(s.dias_cobertura) + ' días'}</td>
+          <td>${fecha(s.proxima_caducidad)}</td>
+          <td class="num">${s.unidades_en_riesgo ? numero(s.unidades_en_riesgo) : '—'}</td>
+          <td class="num">${dinero(s.valor_inventario)}</td>
+          <td><span class="badge ${ESTADO_STOCK[s.estado]}">${s.estado}</span></td>
+        </tr>`).join('') : vacio(8, 'No hay productos con ese estado.');
+    }
+
+    async function cargarInventario() {
+      const id = idSuc();
+      cargando($('tablaStock'), 8); cargando($('tablaCaducidad'), 8);
+      const [dash, stock, transf, mermas, comparativo] = await Promise.all([
+        api(`/api/dashboard/${id}`), api(`/api/stock/${id}`), api('/api/transferencias'),
+        api(`/api/mermas/${id}`), api('/api/comparativo/mermas'),
+      ]);
+      const ind = dash.indicadores;
+
+      kpis($('kpisInv'), [
+        { label: 'Valor en riesgo (7 días)', value: dinero(ind.valor_en_riesgo_7_dias), sub: `${ind.lotes_por_caducar_7_dias} lotes por caducar`, tono: ind.valor_en_riesgo_7_dias > 0 ? 'mal' : 'bien' },
+        { label: 'Caducan en 48 h', value: ind.lotes_por_caducar_48_horas, sub: ind.lotes_por_caducar_48_horas ? 'Aplica descuento hoy' : 'Sin urgencias', tono: ind.lotes_por_caducar_48_horas ? 'mal' : 'bien' },
+        { label: 'Productos con sobreinventario', value: ind.productos_con_sobreinventario, sub: `${dinero(ind.valor_sobreinventario_en_riesgo)} en exceso`, tono: ind.productos_con_sobreinventario ? 'mal' : 'bien' },
+        { label: 'Merma (30 días)', value: dinero(ind.merma_ultimos_30_dias), sub: 'Costo de lo perdido' },
+      ]);
+
+      // Stock
+      estado.stock = stock;
+      pintarStock();
+
+      // Caducidad con descuento
+      $('tablaCaducidad').innerHTML = dash.caducidad.length ? dash.caducidad.map(c => {
+        const tono = c.dias_para_caducar <= 1 ? 'b-crit' : c.dias_para_caducar <= 3 ? 'b-warn' : 'b-info';
+        return `<tr>
+          <td class="prod"><b>${esc(c.producto)}</b><small>${esc(c.categoria)}</small></td>
+          <td>#${c.idlote}</td>
+          <td class="num">${numero(c.existencia)}</td>
+          <td><span class="badge ${tono}">${c.dias_para_caducar === 0 ? 'Hoy' : c.dias_para_caducar + (c.dias_para_caducar === 1 ? ' día' : ' días')}</span></td>
+          <td class="num">${c.unidades_que_no_se_venderian ? numero(c.unidades_que_no_se_venderian) : '—'}</td>
+          <td class="num">${dinero(c.valor_en_riesgo)}</td>
+          <td class="num"><b>${c.descuento_sugerido_pct}%</b></td>
+          <td>${c.descuento_sugerido_pct ? `<button class="btn sm ghost" data-aplicar="${c.idlote}" data-pct="${c.descuento_sugerido_pct}" data-prod="${esc(c.producto)}">Aplicar</button>` : ''}</td>
+        </tr>`;
+      }).join('') : vacio(8, 'Ningún lote caduca en los próximos 7 días.');
+
+      // Sobreinventario
+      $('listaSobre').innerHTML = dash.sobreinventario.length ? dash.sobreinventario.map(s => `
+        <div class="li">
+          <div><b>${esc(s.producto)}</b><small>Existencia ${numero(s.existencia)} · vende ${numero(s.venta_promedio_diaria)}/día</small></div>
+          <div style="text-align:right"><span class="badge b-warn">${numero(s.unidades_en_riesgo)} sin vender</span><small>${dinero(s.valor_en_riesgo)}</small></div>
+        </div>`).join('') : '<div class="vacio">Sin sobreinventario. 👍</div>';
+
+      // Transferencias que involucran a esta sucursal
+      const misTransf = transf.filter(t => t.idsucursal_origen === id || t.idsucursal_destino === id);
+      $('listaTransf').innerHTML = misTransf.length ? misTransf.map(t => {
+        const sale = t.idsucursal_origen === id;
+        return `<div class="li">
+          <div><b>${esc(t.producto)}</b><small>${sale ? 'Enviar a' : 'Recibir de'} ${esc(sale ? t.sucursal_destino : t.sucursal_origen)}</small></div>
+          <div style="text-align:right"><span class="badge ${sale ? 'b-info' : 'b-ok'}">${sale ? '−' : '+'}${numero(t.cantidad)} u.</span><small>Rescata ${dinero(t.valor_rescatado)}</small></div>
+        </div>`;
+      }).join('') : '<div class="vacio">No hay transferencias sugeridas para esta sucursal.</div>';
+
+      // ----- Mermas -----
+      const totalMerma = mermas.por_causa.reduce((a, m) => a + Number(m.costo_total || 0), 0);
+      $('pillMerma').hidden = !totalMerma;
+      $('pillMerma').textContent = `${dinero(totalMerma)} en 30 días`;
+
+      const sem = mermas.por_semana;
+      const maxS = Math.max(...sem.map(s => Number(s.costo_total) || 0), 0) || 1;
+      $('bars').innerHTML = sem.length ? sem.map((s, i) => `
+        <div class="bar-col" data-i="${i}"><div class="bar ${i === sem.length - 1 ? 'actual' : ''}" style="height:${(Number(s.costo_total) || 0) / maxS * 100}%"></div></div>`).join('')
+        : '<div class="vacio" style="width:100%;align-self:center">Sin mermas en las últimas semanas.</div>';
+      $('xLabels').innerHTML = sem.map(s => `<span>${fecha(s.desde)}</span>`).join('');
+      const tip = $('tooltip');
+      $('bars').querySelectorAll('.bar-col').forEach(col => {
+        col.addEventListener('mouseenter', () => {
+          const s = sem[col.dataset.i], bar = col.querySelector('.bar');
+          const caja = $('chartSemanal').getBoundingClientRect(), b = bar.getBoundingClientRect();
+          tip.innerHTML = `<b>Semana del ${fecha(s.desde)}</b> · ${dinero(s.costo_total)}`;
+          tip.style.left = (b.left - caja.left + b.width / 2) + 'px';
+          tip.style.top = (b.top - caja.top) + 'px';
+          tip.classList.add('show');
+        });
+        col.addEventListener('mouseleave', () => tip.classList.remove('show'));
+      });
+
+      barrasHorizontales($('hbarsCausa'), mermas.por_causa, { nombre: 'causa', valor: 'costo_total' });
+      barrasHorizontales($('hbarsProducto'), mermas.por_producto, { nombre: 'producto', valor: 'costo_total' });
+      barrasHorizontales($('hbarsSucursales'), comparativo, { nombre: 'sucursal', valor: 'costo_total', resaltar: f => f.idsucursal === id });
+
+      $('tablaQuiebres').innerHTML = dash.merma_y_quiebres.length ? dash.merma_y_quiebres.map(q => {
+        const tono = q.diagnostico.startsWith('se pide de más') ? 'b-warn' : q.diagnostico.startsWith('se pide de menos') ? 'b-crit'
+                   : q.diagnostico.startsWith('mal momento') ? 'b-info' : 'b-ok';
+        return `<tr>
+          <td class="prod"><b>${esc(q.producto)}</b><small>${q.dias_registrados} días con registro</small></td>
+          <td class="num">${numero(q.vendida)}</td><td class="num">${numero(q.expirada)}</td><td class="num">${numero(q.danada)}</td>
+          <td class="num">${numero(q.horas_quiebre)}</td><td class="num">${q.pct_merma === null ? '—' : q.pct_merma + '%'}</td>
+          <td class="wrap"><span class="badge ${tono}">${esc(q.diagnostico)}</span></td>
+        </tr>`;
+      }).join('') : vacio(7, 'Sin historial diario para esta sucursal.');
+    }
+
+    document.querySelectorAll('#filtroStock button').forEach(b => b.addEventListener('click', () => {
+      document.querySelectorAll('#filtroStock button').forEach(x => x.classList.toggle('on', x === b));
+      estado.filtroStock = b.dataset.f;
+      pintarStock();
+    }));
+
+    $('tablaCaducidad').addEventListener('click', async e => {
+      const b = e.target.closest('[data-aplicar]');
+      if (!b) return;
+      b.disabled = true;
+      try {
+        await api('/api/promociones', { method: 'POST', body: JSON.stringify({
+          idlote: Number(b.dataset.aplicar), porcentaje: Number(b.dataset.pct), idtrabajador: idTrab(), motivo: 'caducidad', origen: 'sistema' }) });
+        b.outerHTML = '<span class="badge b-ok">Aplicado</span>';
+        toast(`Descuento de ${b.dataset.pct}% aplicado a ${b.dataset.prod}`);
+      } catch (err) { b.disabled = false; toast('No se pudo aplicar: ' + err.message, true); }
+    });
+
+    // ---------- PEDIDOS Y ENTREGAS ----------
+    async function cargarPedidos() {
+      const id = idSuc();
+      cargando($('tablaEntregas'), 7); cargando($('pedidoSugerido')); cargando($('tablaHistorial'), 10);
+      const [entregas, sugeridos, proveedores, historial] = await Promise.all([
+        api(`/api/pedidos/${id}`), api(`/api/pedidos/${id}/sugeridos`), api('/api/proveedores/retraso'), api(`/api/pedidos/${id}/historial`),
+      ]);
+      const retrasadas = entregas.filter(e => e.va_tarde).length;
+      const urgentes = sugeridos.filter(s => s.urgente).length;
+      const costoSug = sugeridos.reduce((a, s) => a + Number(s.costo_estimado || 0), 0);
+      const incumplen = proveedores.filter(p => p.incumple_contrato_en.length).length;
+      kpis($('kpisPed'), [
+        { label: 'Entregas pendientes', value: entregas.length, sub: retrasadas ? `${retrasadas} con retraso` : 'Todas a tiempo', tono: retrasadas ? 'mal' : 'bien' },
+        { label: 'Productos por pedir', value: sugeridos.length, sub: urgentes ? `${urgentes} urgentes` : 'Sin urgencias', tono: urgentes ? 'mal' : 'bien' },
+        { label: 'Costo del pedido sugerido', value: dinero(costoSug), sub: 'A precio de compra' },
+        { label: 'Proveedores que incumplen', value: incumplen, sub: `de ${proveedores.length} con pedidos`, tono: incumplen ? 'mal' : 'bien' },
+      ]);
+
+      $('tablaEntregas').innerHTML = entregas.length ? entregas.map(e => `
+        <tr>
+          <td><b>#${e.idpedido}</b></td><td>${esc(e.proveedor)}</td>
+          <td>${fecha(e.fecha_pedido, true)}</td><td>${fecha(e.fecha_prometida, true)}</td><td>${fecha(e.llegada_estimada, true)}</td>
+          <td>${e.va_tarde ? '<span class="badge b-crit">Con retraso</span>' : e.estado === 'en_camino' ? '<span class="badge b-info">En camino</span>' : '<span class="badge b-gris">Pendiente</span>'}</td>
+          <td><button class="btn sm ghost" data-llegada="${e.idpedido}">Registrar llegada</button></td>
+        </tr>`).join('') : vacio(7, 'No hay entregas pendientes.');
+
+      // Pedido sugerido agrupado por proveedor
+      const porProv = {};
+      sugeridos.forEach(s => (porProv[s.idproveedor] ??= { proveedor: s.proveedor, dias: s.dias_entrega_real, items: [] }).items.push(s));
+      $('pedidoSugerido').innerHTML = Object.keys(porProv).length ? Object.entries(porProv).map(([idp, g]) => `
+        <div class="prov-bloque">
+          <div class="prov-head">
+            <div><b>${esc(g.proveedor)}</b><small>Entrega real ≈ ${numero(g.dias)} días · ${dinero(g.items.reduce((a, s) => a + s.costo_estimado, 0))}</small></div>
+            <button class="btn sm" data-crear="${idp}">Crear pedido</button>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Producto</th><th class="num">Existencia</th><th class="num">En camino</th><th class="num">Pedir</th><th class="num">Costo</th></tr></thead>
+            <tbody>${g.items.map(s => `<tr>
+              <td class="prod"><b>${esc(s.producto)} ${s.urgente ? '<span class="badge b-crit" style="margin-left:4px">Urgente</span>' : ''}</b><small>Caja de ${s.tamano_caja} · vende ${numero(s.venta_promedio_diaria)}/día</small></td>
+              <td class="num">${numero(s.existencia)}</td><td class="num">${numero(s.en_camino)}</td>
+              <td class="num"><b>${numero(s.cantidad_sugerida)}</b></td><td class="num">${dinero(s.costo_estimado)}</td></tr>`).join('')}</tbody>
+          </table></div>
+        </div>`).join('') : '<div class="vacio">No hace falta pedir nada por ahora.</div>';
+      estado.sugeridos = porProv;
+
+      $('listaProveedores').innerHTML = proveedores.length ? proveedores.map(p => {
+        const pct = v => v === null || v === undefined ? '—' : Math.round(v * 100) + '%';
+        const malo = p.incumple_contrato_en.length;
+        return `<div class="li">
+          <div><b>${esc(p.proveedor)}</b>
+            <small>Puntualidad ${pct(p.puntualidad_real)} (contrato ${pct(p.puntualidad_contrato)}) · Surtido ${pct(p.surtido_real)} (contrato ${pct(p.fill_rate_contrato)})</small>
+            <small>${p.entregas} entregas · retraso promedio ${numero(p.retraso_promedio_horas)} h</small></div>
+          <span class="badge ${malo ? 'b-crit' : 'b-ok'}">${malo ? 'Incumple ' + p.incumple_contrato_en.join(' y ') : 'Cumple'}</span>
+        </div>`;
+      }).join('') : '<div class="vacio">Sin pedidos registrados.</div>';
+
+      const ESTADO_PED = { recibido: 'b-ok', en_camino: 'b-info', pendiente: 'b-gris', cancelado: 'b-crit' };
+      $('tablaHistorial').innerHTML = historial.length ? historial.map(h => `
+        <tr>
+          <td><b>#${h.idpedido}</b></td><td>${esc(h.proveedor)}</td><td class="wrap">${esc(h.productos)}</td>
+          <td>${fecha(h.fecha_pedido, true)}</td><td>${fecha(h.fecha_llegada, true)}</td>
+          <td class="num">${h.retraso_horas === null ? '—' : (h.retraso_horas > 0 ? `<span style="color:var(--crit);font-weight:600">+${numero(h.retraso_horas)} h</span>` : 'A tiempo')}</td>
+          <td class="num">${numero(h.unidades_pedidas)}</td>
+          <td class="num">${h.unidades_recibidas === null ? '—' : numero(h.unidades_recibidas)}</td>
+          <td class="num">${dinero(h.costo)}</td>
+          <td><span class="badge ${ESTADO_PED[h.estado] || 'b-gris'}">${esc(h.estado.replace('_', ' '))}</span></td>
+        </tr>`).join('') : vacio(10, 'Sin pedidos en los últimos 30 días.');
+    }
+
+    $('pedidoSugerido').addEventListener('click', async e => {
+      const b = e.target.closest('[data-crear]');
+      if (!b) return;
+      const g = estado.sugeridos[b.dataset.crear];
+      if (!g) return;
+      b.disabled = true;
+      try {
+        const r = await api('/api/pedidos', { method: 'POST', body: JSON.stringify({
+          idproveedor: Number(b.dataset.crear), idsucursal: idSuc(), idtrabajador: idTrab(),
+          productos: g.items.map(s => ({ idproducto: s.idproducto, cantidad: s.cantidad_sugerida })) }) });
+        toast(`Pedido #${r.idpedido} creado para ${g.proveedor}`);
+        recargar();
+      } catch (err) { b.disabled = false; toast('No se pudo crear el pedido: ' + err.message, true); }
+    });
+
+    // Modal de llegada
+    $('tablaEntregas').addEventListener('click', async e => {
+      const b = e.target.closest('[data-llegada]');
+      if (!b) return;
+      b.disabled = true;
+      try {
+        const p = await api(`/api/pedido/${b.dataset.llegada}`);
+        estado.pedidoModal = p;
+        $('modalTitulo').textContent = `Registrar llegada · Pedido #${p.idpedido}`;
+        $('modalSub').textContent = `${p.proveedor} · prometido para ${fecha(p.fecha_prometida, true)}. Lo que llegó dañado se registra como merma del proveedor.`;
+        $('modalLineas').innerHTML = p.lineas.map(l => `
+          <tr data-det="${l.iddetalle_pedido}">
+            <td class="prod"><b>${esc(l.producto)}</b><small>${esc(l.sku || '')}</small></td>
+            <td class="num">${numero(l.cantidad_pedida)}</td>
+            <td class="num"><input type="number" min="0" value="${l.cantidad_pedida}" data-campo="recibida" aria-label="Recibido"></td>
+            <td class="num"><input type="number" min="0" value="0" data-campo="danada" aria-label="Dañado"></td>
+          </tr>`).join('');
+        $('modalLlegada').hidden = false;
+      } catch (err) { toast('No se pudo abrir el pedido: ' + err.message, true); }
+      finally { b.disabled = false; }
+    });
+    const cerrarModal = () => { $('modalLlegada').hidden = true; estado.pedidoModal = null; };
+    $('modalCancelar').addEventListener('click', cerrarModal);
+    $('modalLlegada').addEventListener('click', e => { if (e.target === $('modalLlegada')) cerrarModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modalLlegada').hidden) cerrarModal(); });
+    $('modalConfirmar').addEventListener('click', async () => {
+      const p = estado.pedidoModal;
+      if (!p) return;
+      const detalles = [...$('modalLineas').querySelectorAll('tr')].map(tr => ({
+        iddetalle_pedido: Number(tr.dataset.det),
+        cantidad_recibida: Math.max(0, Number(tr.querySelector('[data-campo=recibida]').value) || 0),
+        cantidad_danada: Math.max(0, Number(tr.querySelector('[data-campo=danada]').value) || 0),
+      }));
+      if (detalles.some(d => d.cantidad_danada > d.cantidad_recibida)) { toast('Lo dañado no puede ser mayor que lo recibido', true); return; }
+      $('modalConfirmar').disabled = true;
+      try {
+        await api(`/api/pedidos/${p.idpedido}/llegada`, { method: 'POST', body: JSON.stringify({ detalles }) });
+        cerrarModal();
+        toast(`Llegada del pedido #${p.idpedido} registrada`);
+        recargar();
+      } catch (err) { toast('No se pudo registrar: ' + err.message, true); }
+      finally { $('modalConfirmar').disabled = false; }
+    });
+
+    // ---------- REPORTES ----------
+    const ESTADO_REP = { borrador: 'b-gris', enviado: 'b-info', revisado: 'b-ok' };
+
+    function pintarListaReportes() {
+      const filas = estado.reportes.filter(r => !estado.filtroRep || r.estado === estado.filtroRep);
+      $('listaReportes').innerHTML = filas.length ? filas.map(r => `
+        <button class="rep-item ${estado.repSel === r.idreporte ? 'sel' : ''}" data-rep="${r.idreporte}">
+          <b>${esc(r.titulo)}</b>
+          <small>${fecha(r.fecha, true)} · ${esc(r.autor)}</small>
+          <span class="badge ${ESTADO_REP[r.estado] || 'b-gris'}" style="align-self:flex-start">${esc(r.estado)}</span>
+        </button>`).join('') : '<div class="vacio">No hay reportes con ese estado.</div>';
+    }
+
+    function pintarReporte() {
+      const r = estado.reportes.find(x => x.idreporte === estado.repSel);
+      const cont = $('detalleReporte');
+      if (!r) { cont.innerHTML = '<div class="vacio" style="padding:80px 20px">Selecciona un reporte o genera el del día.</div>'; return; }
+      const puedeRevisar = r.estado === 'enviado' && (!usuario || usuario.rol_sistema === 'gerente');
+      cont.innerHTML = `
+        <div class="card-head">
+          <div><h2>${esc(r.titulo)}</h2><p>${fecha(r.fecha, true)} · ${esc(r.autor)} · ${esc(r.sucursal)}</p></div>
+          <span class="badge ${ESTADO_REP[r.estado] || 'b-gris'}">${esc(r.estado)}</span>
+        </div>
+        <div class="md">${markdown(r.contenido)}</div>
+        ${r.comentario_gerente ? `<div class="comentario"><b>Comentario del gerente:</b> ${esc(r.comentario_gerente)}</div>` : ''}
+        ${r.estado === 'borrador' ? `<div class="acciones"><button class="btn" id="btnEnviarRep">Enviar al gerente</button></div>` : ''}
+        ${puedeRevisar ? `<div class="acciones" style="flex-direction:column;align-items:stretch">
+            <textarea id="comentarioRep" placeholder="Comentario para el operador (opcional)"></textarea>
+            <button class="btn" id="btnRevisarRep" style="align-self:flex-end">Marcar como revisado</button></div>` : ''}`;
+      $('btnEnviarRep')?.addEventListener('click', async e => {
+        e.target.disabled = true;
+        try { await api(`/api/reportes/${r.idreporte}/enviar`, { method: 'POST' }); toast('Reporte enviado al gerente'); await cargarReportes(); }
+        catch (err) { e.target.disabled = false; toast('No se pudo enviar: ' + err.message, true); }
+      });
+      $('btnRevisarRep')?.addEventListener('click', async e => {
+        e.target.disabled = true;
+        try {
+          await api(`/api/reportes/${r.idreporte}/revisar`, { method: 'POST', body: JSON.stringify({
+            idgerente: usuario?.idtrabajador ?? r.idtrabajador ?? 1, comentario: $('comentarioRep').value.trim() || null }) });
+          toast('Reporte marcado como revisado'); await cargarReportes();
+        } catch (err) { e.target.disabled = false; toast('No se pudo actualizar: ' + err.message, true); }
+      });
+    }
+
+    async function cargarReportes() {
+      cargando($('listaReportes'));
+      estado.reportes = await api(`/api/reportes?idsucursal=${idSuc()}`);
+      if (!estado.reportes.some(r => r.idreporte === estado.repSel)) estado.repSel = estado.reportes[0]?.idreporte ?? null;
+      pintarListaReportes();
+      pintarReporte();
+    }
+
+    $('listaReportes').addEventListener('click', e => {
+      const b = e.target.closest('[data-rep]');
+      if (!b) return;
+      estado.repSel = Number(b.dataset.rep);
+      pintarListaReportes(); pintarReporte();
+    });
+    document.querySelectorAll('#filtroReportes button').forEach(b => b.addEventListener('click', () => {
+      document.querySelectorAll('#filtroReportes button').forEach(x => x.classList.toggle('on', x === b));
+      estado.filtroRep = b.dataset.f;
+      pintarListaReportes();
+    }));
+    $('btnGenerarReporte').addEventListener('click', async () => {
+      const b = $('btnGenerarReporte');
+      b.disabled = true;
+      $('detalleReporte').innerHTML = '<div class="cargando" style="padding:80px 0"><div class="spinner"></div>La IA está redactando el reporte…</div>';
+      try {
+        const r = await api('/api/asistente/reporte', { method: 'POST', body: JSON.stringify({ idsucursal: idSuc(), idtrabajador: idTrab() }) });
+        if (r.idreporte) estado.repSel = r.idreporte;
+        toast(r.desde_cache ? 'Ya había un reporte reciente; se muestra ese' : 'Reporte generado y guardado como borrador');
+        await cargarReportes();
+      } catch (err) { toast('No se pudo generar: ' + err.message, true); pintarReporte(); }
+      finally { b.disabled = false; }
+    });
+
+    // ---------- Navegación y carga ----------
+    const CARGAR = { inventario: cargarInventario, pedidos: cargarPedidos, reportes: cargarReportes };
+
+    async function mostrarVista(v, forzar = false) {
+      if (!VISTAS[v]) v = 'inventario';
+      estado.vista = v;
+      document.querySelectorAll('.vista').forEach(s => s.hidden = s.id !== `vista-${v}`);
+      document.querySelectorAll('.nav a[data-vista]').forEach(a => a.classList.toggle('active', a.dataset.vista === v));
+      [$('tituloVista').textContent, $('subVista').textContent] = VISTAS[v];
+      const clave = `${v}:${idSuc()}`;
+      if (estado.cache[clave] && !forzar) return;
+      $('errorGlobal').hidden = true;
+      try {
+        await CARGAR[v]();
+        estado.cache[clave] = true;
+      } catch (err) {
+        $('errorGlobal').textContent = 'No se pudieron cargar los datos: ' + err.message + '. Revisa que el backend esté corriendo.';
+        $('errorGlobal').hidden = false;
+      }
+    }
+    function recargar() { estado.cache = {}; mostrarVista(estado.vista, true); }
+
+    window.addEventListener('hashchange', () => mostrarVista(location.hash.slice(1)));
+    $('sucursal').addEventListener('change', () => { estado.cache = {}; estado.repSel = null; mostrarVista(estado.vista, true); });
+    $('btnRecargar').addEventListener('click', recargar);
+
+    async function iniciar() {
+      try {
+        const [salud, sucursales] = await Promise.all([api('/api/salud'), api('/api/sucursales')]);
+        $('chipFecha').innerHTML = salud.fecha_referencia ? `Datos al <b>${fecha(salud.fecha_referencia)} ${salud.fecha_referencia.slice(0, 4)}</b>` : 'Conectado';
+        $('sucursal').innerHTML = sucursales.map(s => `<option value="${s.idsucursal}">${esc(s.nombre)}</option>`).join('');
+        if (usuario?.idsucursal && sucursales.some(s => s.idsucursal === usuario.idsucursal)) $('sucursal').value = usuario.idsucursal;
+      } catch (err) {
+        $('chipFecha').textContent = 'Sin conexión con el backend';
+        $('chipFecha').classList.add('offline');
+        $('errorGlobal').textContent = 'No hay conexión con el backend. Arráncalo con "uvicorn main:app --reload" y recarga la página.';
+        $('errorGlobal').hidden = false;
+        return;
+      }
+      mostrarVista(location.hash.slice(1) || 'inventario');
+    }
+    iniciar();
   </script>
 </body>
 </html>
