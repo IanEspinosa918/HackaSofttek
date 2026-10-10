@@ -1,7 +1,15 @@
 /* =====================================================================
-   Tienda Inteligente para Retail - Esquema de base de datos
+   Tienda Inteligente para Retail - Esquema de base de datos (v3)
    Motor: SQL Server (2016 o superior)
    Enfoque: control de mermas, inventario por lote, pedidos y reportes
+
+   v3: adaptado para cargar el dataset del hackaton (Glazed Co.), pero solo
+   con lo que sirve para controlar y reducir la merma. Se conservan todas las
+   tablas originales (incluida promocion).
+   Marcas en los comentarios:
+     [NUEVO]       tabla o vista que no existia
+     [MODIFICADO]  tabla o vista existente con cambios
+   Lo que no tiene marca queda igual que en la v1.
 
    Se puede ejecutar varias veces: borra las tablas y las vuelve a crear.
    ===================================================================== */
@@ -20,7 +28,9 @@ DROP VIEW  IF EXISTS vw_productos_por_caducar;
 DROP VIEW  IF EXISTS vw_retraso_proveedor;
 DROP VIEW  IF EXISTS vw_venta_promedio_diaria;
 DROP VIEW  IF EXISTS vw_inventario_actual;
+DROP VIEW  IF EXISTS vw_fecha_referencia;          -- [NUEVO]
 
+DROP TABLE IF EXISTS inventario_diario;            -- [NUEVO]
 DROP TABLE IF EXISTS reporte;
 DROP TABLE IF EXISTS promocion;
 DROP TABLE IF EXISTS merma;
@@ -44,13 +54,22 @@ GO
    1. ORGANIZACIÓN: sucursales, puestos, turnos y trabajadores
    ===================================================================== */
 
+-- [MODIFICADO] columnas nuevas para ligar con stores.csv / sites.csv
 CREATE TABLE sucursal (
-    idsucursal   INT IDENTITY(1,1) PRIMARY KEY,
-    nombre       VARCHAR(80)  NOT NULL UNIQUE,
-    direccion    VARCHAR(150) NULL,
-    telefono     VARCHAR(15)  NULL,
-    activa       BIT          NOT NULL DEFAULT 1
+    idsucursal       INT IDENTITY(1,1) PRIMARY KEY,
+    nombre           VARCHAR(80)  NOT NULL UNIQUE,
+    direccion        VARCHAR(150) NULL,
+    telefono         VARCHAR(15)  NULL,
+    activa           BIT          NOT NULL DEFAULT 1,
+    codigo           VARCHAR(10)  NULL,        -- [NUEVO] store_id del dataset (S001...)
+    region           VARCHAR(30)  NULL,        -- [NUEVO] region del sitio (para comparar mermas)
+    tipo_sitio       VARCHAR(30)  NULL,        -- [NUEVO] Airport, Rail Station, Bus Terminal, Resort
+    fecha_cierre     DATE         NULL         -- [NUEVO] cierre definitivo
 );
+GO
+
+-- Codigo unico, permitiendo sucursales sin codigo (NULL)
+CREATE UNIQUE INDEX ux_sucursal_codigo ON sucursal (codigo) WHERE codigo IS NOT NULL;
 GO
 
 -- El puesto define también el rol en el sistema (operador o gerente)
@@ -100,16 +119,24 @@ CREATE TABLE categoria (
 );
 GO
 
+-- [MODIFICADO] columnas nuevas: cumplimiento contractual (entregas incompletas o tarde generan merma o quiebre)
 CREATE TABLE proveedor (
     idproveedor              INT IDENTITY(1,1) PRIMARY KEY,
     nombre                   VARCHAR(80) NOT NULL UNIQUE,
     telefono                 VARCHAR(15) NULL,
     correo                   VARCHAR(100) NULL,
     dias_entrega_prometidos  INT NOT NULL DEFAULT 1
-        CONSTRAINT ck_proveedor_dias CHECK (dias_entrega_prometidos >= 0)
+        CONSTRAINT ck_proveedor_dias CHECK (dias_entrega_prometidos >= 0),
+    codigo                   VARCHAR(10)  NULL,        -- [NUEVO] supplier_id (SUP01...)
+    fill_rate_contrato       DECIMAL(4,3) NULL,        -- [NUEVO] contract_fill_rate
+    puntualidad_contrato     DECIMAL(4,3) NULL         -- [NUEVO] contract_on_time_rate
 );
 GO
 
+CREATE UNIQUE INDEX ux_proveedor_codigo ON proveedor (codigo) WHERE codigo IS NOT NULL;
+GO
+
+-- [MODIFICADO] sku para cruzar con ventas, inventario y pedidos del dataset
 CREATE TABLE producto (
     idproducto      INT IDENTITY(1,1) PRIMARY KEY,
     nombre          VARCHAR(80)   NOT NULL,
@@ -121,9 +148,14 @@ CREATE TABLE producto (
     es_perecedero   BIT           NOT NULL DEFAULT 1,
     unidad          VARCHAR(15)   NOT NULL DEFAULT 'pieza',   -- pieza, kg, litro
     activo          BIT           NOT NULL DEFAULT 1,
+    sku             VARCHAR(20)   NULL,        -- [NUEVO] SKU-100003...
+    tamano_caja     INT           NULL,        -- [NUEVO] case_size: se pide en multiplos de esto
     CONSTRAINT fk_producto_categoria FOREIGN KEY (idcategoria) REFERENCES categoria(idcategoria),
     CONSTRAINT fk_producto_proveedor FOREIGN KEY (idproveedor) REFERENCES proveedor(idproveedor)
 );
+GO
+
+CREATE UNIQUE INDEX ux_producto_sku ON producto (sku) WHERE sku IS NOT NULL;
 GO
 
 /* =====================================================================
@@ -309,6 +341,32 @@ CREATE TABLE reporte (
 GO
 
 /* =====================================================================
+   9b. HISTORIAL DIARIO DE INVENTARIO  [NUEVO]
+   Es la fuente para analizar y predecir la merma: cuanto se expira, cuanto
+   se daña y cuantas horas hubo quiebre (el otro lado de pedir de menos).
+   ===================================================================== */
+
+-- Foto diaria de inventario (inventory_daily.csv). Conserva los quiebres y lo que
+-- esta en transito, que se pierden al convertir todo a lotes.
+CREATE TABLE inventario_diario (
+    idsucursal         INT          NOT NULL,
+    idproducto         INT          NOT NULL,
+    fecha              DATE         NOT NULL,
+    cantidad_apertura  INT          NULL,
+    recibida           INT          NULL,
+    vendida            INT          NULL,
+    expirada           INT          NULL,
+    danada             INT          NULL,
+    cantidad_cierre    INT          NULL,
+    en_pedido          INT          NULL,        -- on_order_qty
+    horas_quiebre      DECIMAL(4,1) NULL,        -- stockout_hours
+    CONSTRAINT pk_inventario_diario PRIMARY KEY (idsucursal, idproducto, fecha),
+    CONSTRAINT fk_invd_sucursal FOREIGN KEY (idsucursal) REFERENCES sucursal(idsucursal),
+    CONSTRAINT fk_invd_producto FOREIGN KEY (idproducto) REFERENCES producto(idproducto)
+);
+GO
+
+/* =====================================================================
    10. ÍNDICES para las consultas más frecuentes
    ===================================================================== */
 
@@ -318,11 +376,20 @@ CREATE INDEX ix_venta_sucursal_fecha    ON venta (idsucursal, fecha);
 CREATE INDEX ix_dv_producto             ON detalle_venta (idproducto);
 CREATE INDEX ix_pedido_proveedor        ON pedido (idproveedor, estado);
 CREATE INDEX ix_merma_fecha             ON merma (fecha);
+CREATE INDEX ix_invd_fecha              ON inventario_diario (fecha);                               -- [NUEVO]
 GO
 
 /* =====================================================================
    11. VISTAS (le simplifican la vida al backend y a la IA)
    ===================================================================== */
+
+-- [NUEVO] Fecha de referencia ("hoy" para los reportes): el ultimo dia con ventas.
+-- Con el dataset es 2026-09-30; con datos en vivo se mueve sola.
+-- Si todavia no hay ventas, usa la fecha del servidor.
+CREATE VIEW vw_fecha_referencia AS
+SELECT ISNULL(MAX(CAST(fecha AS DATE)), CAST(GETDATE() AS DATE)) AS fecha_ref
+FROM venta;
+GO
 
 -- Existencia actual por producto y sucursal
 CREATE VIEW vw_inventario_actual AS
@@ -341,7 +408,8 @@ JOIN sucursal  s ON s.idsucursal  = l.idsucursal
 GROUP BY s.idsucursal, s.nombre, p.idproducto, p.nombre, c.nombre;
 GO
 
--- Venta promedio diaria de los últimos 30 días
+-- [MODIFICADO] Venta promedio diaria de los ultimos 30 dias contados desde la fecha de referencia
+-- (antes se contaba desde GETDATE(), lo que dejaba la vista casi vacia con el dataset)
 CREATE VIEW vw_venta_promedio_diaria AS
 SELECT
     v.idsucursal,
@@ -349,7 +417,9 @@ SELECT
     CAST(SUM(dv.cantidad) AS DECIMAL(10,2)) / 30.0 AS venta_promedio_diaria
 FROM detalle_venta dv
 JOIN venta v ON v.idventa = dv.idventa
-WHERE v.fecha >= DATEADD(DAY, -30, CAST(GETDATE() AS DATE))
+CROSS JOIN vw_fecha_referencia r
+WHERE v.fecha >= DATEADD(DAY, -29, r.fecha_ref)
+  AND v.fecha <  DATEADD(DAY,   1, r.fecha_ref)
 GROUP BY v.idsucursal, dv.idproducto;
 GO
 
@@ -367,7 +437,7 @@ WHERE pe.estado = 'recibido' AND pe.fecha_llegada IS NOT NULL
 GROUP BY pr.idproveedor, pr.nombre;
 GO
 
--- Lotes con existencia que caducan en los próximos 7 días
+-- [MODIFICADO] Lotes con existencia que caducan en los 7 dias siguientes a la fecha de referencia
 CREATE VIEW vw_productos_por_caducar AS
 SELECT
     l.idlote,
@@ -377,18 +447,19 @@ SELECT
     p.nombre AS producto,
     l.cantidad_actual,
     l.fecha_caducidad,
-    DATEDIFF(DAY, CAST(GETDATE() AS DATE), l.fecha_caducidad) AS dias_para_caducar,
+    DATEDIFF(DAY, r.fecha_ref, l.fecha_caducidad) AS dias_para_caducar,
     l.cantidad_actual * p.costo AS valor_en_riesgo
 FROM lote l
 JOIN producto p ON p.idproducto = l.idproducto
 JOIN sucursal s ON s.idsucursal = l.idsucursal
+CROSS JOIN vw_fecha_referencia r
 WHERE l.cantidad_actual > 0
-  AND l.fecha_caducidad BETWEEN CAST(GETDATE() AS DATE) AND DATEADD(DAY, 7, CAST(GETDATE() AS DATE));
+  AND l.fecha_caducidad BETWEEN r.fecha_ref AND DATEADD(DAY, 7, r.fecha_ref);
 GO
 
 /* =====================================================================
    12. CATÁLOGOS BÁSICOS (datos fijos que no cambian)
-   El resto de los datos de prueba los cargará generar_datos.py
+   Los datos de operación se cargan desde el dataset (ver script de carga).
    ===================================================================== */
 
 INSERT INTO puesto (nombre, rol_sistema) VALUES
@@ -409,5 +480,5 @@ INSERT INTO causa_merma (nombre, descripcion) VALUES
     ('Otro',      'Cualquier otra causa');
 GO
 
-PRINT 'Esquema de Hakaton_JR creado correctamente.';
+PRINT 'Esquema de Hakaton_JR (v3) creado correctamente.';
 GO
